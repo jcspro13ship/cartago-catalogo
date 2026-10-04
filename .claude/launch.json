@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "cartago-dev",
+      "runtimeExecutable": "/Users/juancarlossantos/.cartago-dev.sh",
+      "runtimeArgs": [],
+      "port": 5174
+    }
+  ]
+}

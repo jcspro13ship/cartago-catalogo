@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Talabartería Cartago</title>
+    <script>
+      // GitHub Pages es un servidor de archivos estáticos: no sabe qué hacer
+      // con rutas como /catalogo o /producto/p1 (solo existe index.html).
+      // Este truco redirige cualquier ruta desconocida a index.html
+      // codificando la ruta original en la URL, y un script en index.html la
+      // restaura. Ver: https://github.com/rafgraph/spa-github-pages
+      var pathSegmentsToKeep = 1 // 1 = repo en subcarpeta (github.io/repo/...). Si en el futuro se sirve desde un dominio propio (raíz), cambiar a 0.
+      var l = window.location
+      var path = l.pathname.split('/').slice(0, 1 + pathSegmentsToKeep).join('/')
+      l.replace(
+        l.protocol +
+          '//' +
+          l.hostname +
+          (l.port ? ':' + l.port : '') +
+          path +
+          '/?/' +
+          l.pathname.slice(path.length + 1).replace(/&/g, '~and~') +
+          (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
+          l.hash
+      )
+    </script>
+  </head>
+  <body></body>
+</html>
