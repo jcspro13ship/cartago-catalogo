@@ -409,6 +409,39 @@ p {
   }
 }
 
+/* Selector COP / USD */
+.selector-moneda {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--crema-oscura);
+  border: 1px solid var(--linea);
+}
+
+.selector-moneda button {
+  border: 0;
+  background: none;
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--tinta-suave);
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.selector-moneda button.activa {
+  background: var(--vino);
+  color: var(--blanco);
+}
+
+@media (max-width: 760px) {
+  .selector-moneda button {
+    padding: 0.3rem 0.5rem;
+    font-size: 0.7rem;
+  }
+}
+
 /* ---------- Hero ---------- */
 
 .hero {
@@ -1621,7 +1654,6 @@ img.galeria-principal {
   padding: 0;
   margin: 0 0 0.9rem;
   display: grid;
-  grid-template-columns: 1fr 1fr;
   gap: 0.5rem;
 }
 

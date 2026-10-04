@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom'
 import ImagenProducto from './ImagenProducto'
-import { textoPrecio } from '../utils/formato'
+import { useMoneda } from '../context/MonedaContext'
 
 export default function ProductoCard({ producto, stock }) {
+  const { precio, texto } = useMoneda()
   const agotado = stock === 0
   return (
     <Link to={`/producto/${producto.id}`} className="producto-card">
@@ -17,9 +18,7 @@ export default function ProductoCard({ producto, stock }) {
       <div className="producto-card-info">
         <p className="producto-card-categoria">{producto.categoria}</p>
         <h3>{producto.nombre}</h3>
-        <p className={`producto-card-precio ${producto.precio > 0 ? '' : 'consultar'}`}>
-          {textoPrecio(producto.precio)}
-        </p>
+        <p className={`producto-card-precio ${precio(producto) > 0 ? '' : 'consultar'}`}>{texto(producto)}</p>
       </div>
     </Link>
   )

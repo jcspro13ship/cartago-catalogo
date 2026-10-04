@@ -8,22 +8,25 @@ import Carrito from './pages/Carrito'
 import NoEncontrado from './pages/NoEncontrado'
 import { CartProvider } from './context/CartContext'
 import { CatalogoProvider } from './context/CatalogoContext'
+import { MonedaProvider } from './context/MonedaContext'
 
 export default function App() {
   return (
     <CatalogoProvider>
-      <CartProvider>
-        <Routes>
-          <Route path="/" element={<Layout />}>
-            <Route index element={<Inicio />} />
-            <Route path="nosotros" element={<Nosotros />} />
-            <Route path="catalogo" element={<Catalogo />} />
-            <Route path="producto/:id" element={<ProductoDetalle />} />
-            <Route path="carrito" element={<Carrito />} />
-            <Route path="*" element={<NoEncontrado />} />
-          </Route>
-        </Routes>
-      </CartProvider>
+      <MonedaProvider>
+        <CartProvider>
+          <Routes>
+            <Route path="/" element={<Layout />}>
+              <Route index element={<Inicio />} />
+              <Route path="nosotros" element={<Nosotros />} />
+              <Route path="catalogo" element={<Catalogo />} />
+              <Route path="producto/:id" element={<ProductoDetalle />} />
+              <Route path="carrito" element={<Carrito />} />
+              <Route path="*" element={<NoEncontrado />} />
+            </Route>
+          </Routes>
+        </CartProvider>
+      </MonedaProvider>
     </CatalogoProvider>
   )
 }

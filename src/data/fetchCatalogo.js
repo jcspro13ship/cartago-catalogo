@@ -1,6 +1,6 @@
 import { productos as productosEjemplo } from './productos'
 import { variantes as variantesEjemplo } from './variantes'
-import { SHEETS_API_URL } from '../config'
+import { SHEETS_API_URL, TASA_USD_EJEMPLO } from '../config'
 
 const CLAVE_CACHE = 'cartago_catalogo_v1'
 
@@ -15,6 +15,7 @@ function normalizarProductos(productos) {
     ...p,
     id: String(p.id),
     precio: Number(p.precio) || 0,
+    precio_usd: Number(p.precio_usd) || 0,
     marca: p.marca ? String(p.marca) : '',
     imagenes: Array.isArray(p.imagenes) ? p.imagenes.filter(Boolean) : p.imagen ? [p.imagen] : [],
     activo: esVerdadero(p.activo),
@@ -33,10 +34,17 @@ function normalizarVariantes(variantes) {
   }))
 }
 
+// Ajustes generales que Cartago edita en la hoja "Configuracion" (clave | valor).
+function normalizarConfig(config) {
+  const tasa = Number(config && config.tasa_usd)
+  return { tasaUsd: tasa > 0 ? tasa : TASA_USD_EJEMPLO }
+}
+
 function datosEjemplo() {
   return {
     productos: normalizarProductos(productosEjemplo),
     variantes: normalizarVariantes(variantesEjemplo),
+    config: normalizarConfig(null),
     fuente: 'ejemplo',
   }
 }
@@ -49,6 +57,7 @@ function leerCache() {
     return {
       productos: normalizarProductos(data.productos),
       variantes: normalizarVariantes(data.variantes),
+      config: normalizarConfig(data.config),
       fuente: 'cache',
     }
   } catch {
@@ -86,6 +95,7 @@ export async function cargarCatalogo() {
     return {
       productos: normalizarProductos(data.productos),
       variantes: normalizarVariantes(data.variantes),
+      config: normalizarConfig(data.config),
       fuente: 'sheets',
     }
   } catch (err) {

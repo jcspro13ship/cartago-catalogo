@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useCart } from '../context/CartContext'
+import { useMoneda } from '../context/MonedaContext'
 import { EMPRESA } from '../config'
 import { linkWhatsApp } from '../utils/whatsapp'
 import Icono, { IconoWhatsApp } from './Icono'
@@ -49,6 +50,8 @@ export default function Layout() {
             </a>
           </nav>
 
+          <SelectorMoneda />
+
           <Link to="/carrito" className="header-carrito" aria-label={`Carrito, ${cantidadTotal} productos`}>
             <Icono nombre="carrito" />
             {cantidadTotal > 0 && <span className="header-carrito-cuenta">{cantidadTotal}</span>}
@@ -73,6 +76,19 @@ export default function Layout() {
           <IconoWhatsApp tamano={28} />
         </a>
       )}
+    </div>
+  )
+}
+
+function SelectorMoneda() {
+  const { moneda, setMoneda } = useMoneda()
+  return (
+    <div className="selector-moneda" role="group" aria-label="Moneda de los precios">
+      {['COP', 'USD'].map((m) => (
+        <button key={m} className={moneda === m ? 'activa' : ''} aria-pressed={moneda === m} onClick={() => setMoneda(m)}>
+          {m}
+        </button>
+      ))}
     </div>
   )
 }
@@ -118,6 +134,10 @@ function Footer() {
                 <a href={`tel:${EMPRESA.telefono.replace(/\s/g, '')}`}>{EMPRESA.telefono}</a>
               </li>
             )}
+            <li>
+              <Icono nombre="envio" tamano={18} />
+              <span>Envíos a todo Colombia y al exterior</span>
+            </li>
             <li>
               <IconoWhatsApp tamano={18} />
               <a href={linkWhatsApp('Hola, quisiera recibir asesoría de Talabartería Cartago.')} target="_blank" rel="noopener noreferrer">

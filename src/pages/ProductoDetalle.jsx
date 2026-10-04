@@ -5,7 +5,7 @@ import { useCart } from '../context/CartContext'
 import GaleriaProducto from '../components/GaleriaProducto'
 import ProductoCard from '../components/ProductoCard'
 import Icono, { IconoWhatsApp } from '../components/Icono'
-import { textoPrecio } from '../utils/formato'
+import { useMoneda } from '../context/MonedaContext'
 import { muestraColor } from '../utils/colores'
 import { linkWhatsApp } from '../utils/whatsapp'
 
@@ -18,6 +18,7 @@ function textoStock(stock) {
 export default function ProductoDetalle() {
   const { id } = useParams()
   const { addItem } = useCart()
+  const { precio, texto } = useMoneda()
   const { productos, variantes: todas, cargando } = useCatalogo()
 
   const producto = productos.find((p) => p.id === id && p.activo)
@@ -87,6 +88,7 @@ export default function ProductoDetalle() {
       nombre: producto.nombre,
       color: variante.color,
       precio: producto.precio,
+      precio_usd: producto.precio_usd,
       imagen: producto.imagenes[0] || null,
       personalizacion: personalizacion.trim(),
       stock,
@@ -119,7 +121,7 @@ export default function ProductoDetalle() {
               {producto.marca ? ` · ${producto.marca}` : ''}
             </p>
             <h1>{producto.nombre}</h1>
-            <p className={`producto-precio ${producto.precio > 0 ? '' : 'consultar'}`}>{textoPrecio(producto.precio)}</p>
+            <p className={`producto-precio ${precio(producto) > 0 ? '' : 'consultar'}`}>{texto(producto)}</p>
             <p className="producto-descripcion">{producto.descripcion}</p>
 
             {tieneColores && (
@@ -216,6 +218,9 @@ export default function ProductoDetalle() {
               </li>
               <li>
                 <Icono nombre="check" tamano={18} /> Pago con tarjeta, débito o transferencia por link seguro
+              </li>
+              <li>
+                <Icono nombre="envio" tamano={18} /> Envíos a todo el país y al exterior
               </li>
             </ul>
           </div>

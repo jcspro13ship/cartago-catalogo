@@ -60,13 +60,11 @@ export function CartProvider({ children }) {
     setItems([])
   }
 
-  const total = useMemo(() => items.reduce((acc, it) => acc + it.precio * it.cantidad, 0), [items])
   const cantidadTotal = useMemo(() => items.reduce((acc, it) => acc + it.cantidad, 0), [items])
-  const hayPorCotizar = useMemo(() => items.some((it) => !(it.precio > 0)), [items])
 
   return (
     <CartContext.Provider
-      value={{ items, addItem, removeItem, updateCantidad, clearCart, total, cantidadTotal, hayPorCotizar }}
+      value={{ items, addItem, removeItem, updateCantidad, clearCart, cantidadTotal }}
     >
       {children}
     </CartContext.Provider>

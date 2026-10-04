@@ -3,12 +3,13 @@ import { Link } from 'react-router-dom'
 import { useCart } from '../context/CartContext'
 import ImagenProducto from '../components/ImagenProducto'
 import Icono, { IconoWhatsApp } from '../components/Icono'
-import { formatoPrecio, textoPrecio } from '../utils/formato'
+import { useMoneda } from '../context/MonedaContext'
 import { linkWhatsApp } from '../utils/whatsapp'
 
 const ENTREGAS = {
   tienda: 'Recoger en la tienda',
-  envio: 'Envío a domicilio',
+  nacional: 'Envío nacional',
+  internacional: 'Envío internacional',
 }
 
 // Código corto para que Cartago y el cliente hablen del mismo pedido por WhatsApp.
@@ -16,11 +17,12 @@ function codigoPedido() {
   return `CT-${Date.now().toString(36).slice(-5).toUpperCase()}`
 }
 
-function construirMensaje(items, total, hayPorCotizar, cliente, codigo) {
+function construirMensaje({ items, total, hayPorCotizar, cliente, codigo, moneda, precio, formato }) {
   const lineas = items.flatMap((it, i) => {
+    const valor = precio(it)
     const partes = [
       `${i + 1}. ${it.nombre}${it.color ? ` — Color: ${it.color}` : ''} — Cant: ${it.cantidad} — ${
-        it.precio > 0 ? formatoPrecio(it.precio * it.cantidad) : 'Precio a consultar'
+        valor > 0 ? formato(valor * it.cantidad) : 'Precio a consultar'
       }`,
     ]
     if (it.personalizacion) partes.push(`   Personalización: ${it.personalizacion}`)
@@ -31,14 +33,17 @@ function construirMensaje(items, total, hayPorCotizar, cliente, codigo) {
     '',
     ...lineas,
     '',
-    `Total: ${formatoPrecio(total)}${hayPorCotizar ? ' + productos por cotizar' : ''}`,
+    `Total: ${formato(total)}${hayPorCotizar ? ' + productos por cotizar' : ''}`,
+    ...(moneda === 'USD' ? ['(Valores en dólares aproximados: espero la cotización final en USD.)'] : []),
+    'El costo del envío lo coordinamos por aquí.',
     '',
     'Mis datos:',
     `Nombre: ${cliente.nombre}`,
     `Celular: ${cliente.celular}`,
     `Ciudad: ${cliente.ciudad}`,
+    ...(cliente.entrega === 'internacional' ? [`País: ${cliente.pais}`] : []),
     `Entrega: ${ENTREGAS[cliente.entrega]}`,
-    ...(cliente.entrega === 'envio' ? [`Dirección: ${cliente.direccion}`] : []),
+    ...(cliente.entrega !== 'tienda' ? [`Dirección: ${cliente.direccion}`] : []),
     ...(cliente.notas ? [`Notas: ${cliente.notas}`] : []),
     '',
     'Quedo atento(a) al link de pago. ¡Gracias!',
@@ -46,14 +51,32 @@ function construirMensaje(items, total, hayPorCotizar, cliente, codigo) {
 }
 
 export default function Carrito() {
-  const { items, removeItem, updateCantidad, clearCart, total, hayPorCotizar } = useCart()
-  const [cliente, setCliente] = useState({ nombre: '', celular: '', ciudad: '', entrega: 'tienda', direccion: '', notas: '' })
+  const { items, removeItem, updateCantidad, clearCart } = useCart()
+  const { moneda, setMoneda, precio, texto, formato } = useMoneda()
+  const [cliente, setCliente] = useState({
+    nombre: '',
+    celular: '',
+    ciudad: '',
+    pais: '',
+    entrega: 'tienda',
+    direccion: '',
+    notas: '',
+  })
   const [error, setError] = useState('')
   const [enviado, setEnviado] = useState(null)
+
+  const total = items.reduce((acc, it) => acc + precio(it) * it.cantidad, 0)
+  const hayPorCotizar = items.some((it) => !(precio(it) > 0))
 
   function actualizar(campo, valor) {
     setCliente((c) => ({ ...c, [campo]: valor }))
     setError('')
+  }
+
+  // Un cliente del exterior casi siempre quiere ver el valor en dólares.
+  function elegirEntrega(valor) {
+    actualizar('entrega', valor)
+    if (valor === 'internacional') setMoneda('USD')
   }
 
   if (enviado) {
@@ -112,12 +135,18 @@ export default function Carrito() {
       setError('Revisa el número de celular.')
       return
     }
-    if (datos.entrega === 'envio' && !datos.direccion) {
+    if (datos.entrega === 'internacional' && !datos.pais) {
+      setError('Escribe el país de envío.')
+      return
+    }
+    if (datos.entrega !== 'tienda' && !datos.direccion) {
       setError('Escribe la dirección de envío.')
       return
     }
     const codigo = codigoPedido()
-    const url = linkWhatsApp(construirMensaje(items, total, hayPorCotizar, datos, codigo))
+    const url = linkWhatsApp(
+      construirMensaje({ items, total, hayPorCotizar, cliente: datos, codigo, moneda, precio, formato })
+    )
     window.open(url, '_blank', 'noopener,noreferrer')
     setEnviado({ codigo, url })
   }
@@ -146,7 +175,7 @@ export default function Carrito() {
                 </Link>
                 {it.color && <p className="carrito-item-detalle">Color: {it.color}</p>}
                 {it.personalizacion && <p className="carrito-item-detalle">Personalización: {it.personalizacion}</p>}
-                <p className="carrito-item-precio">{textoPrecio(it.precio)}</p>
+                <p className="carrito-item-precio">{texto(it)}</p>
               </div>
               <div className="carrito-item-acciones">
                 <div className="cantidad cantidad-chica">
@@ -174,7 +203,7 @@ export default function Carrito() {
           <h2>Resumen</h2>
           <div className="resumen-fila">
             <span>Subtotal</span>
-            <span>{formatoPrecio(total)}</span>
+            <span>{formato(total)}</span>
           </div>
           {hayPorCotizar && <p className="resumen-nota">+ productos con precio a consultar: te cotizamos por WhatsApp.</p>}
           <div className="resumen-fila resumen-nota-fila">
@@ -183,8 +212,11 @@ export default function Carrito() {
           </div>
           <div className="resumen-fila resumen-total">
             <span>Total</span>
-            <span>{formatoPrecio(total)}</span>
+            <span>{formato(total)}</span>
           </div>
+          {moneda === 'USD' && (
+            <p className="resumen-nota">Valores en dólares aproximados. Te confirmamos la cotización final en USD por WhatsApp.</p>
+          )}
 
           <div className="costura" />
 
@@ -211,15 +243,22 @@ export default function Carrito() {
 
           <fieldset className="campo-entrega">
             <legend>Entrega</legend>
-            {Object.entries(ENTREGAS).map(([valor, texto]) => (
+            {Object.entries(ENTREGAS).map(([valor, etiqueta]) => (
               <label key={valor} className={`opcion-entrega ${cliente.entrega === valor ? 'activa' : ''}`}>
-                <input type="radio" name="entrega" value={valor} checked={cliente.entrega === valor} onChange={() => actualizar('entrega', valor)} />
-                {texto}
+                <input type="radio" name="entrega" value={valor} checked={cliente.entrega === valor} onChange={() => elegirEntrega(valor)} />
+                {etiqueta}
               </label>
             ))}
           </fieldset>
 
-          {cliente.entrega === 'envio' && (
+          {cliente.entrega === 'internacional' && (
+            <label className="campo">
+              <span>País</span>
+              <input type="text" autoComplete="country-name" value={cliente.pais} onChange={(e) => actualizar('pais', e.target.value)} />
+            </label>
+          )}
+
+          {cliente.entrega !== 'tienda' && (
             <label className="campo">
               <span>Dirección de envío</span>
               <input

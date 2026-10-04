@@ -1,5 +1,6 @@
 // Este script se pega en Extensiones > Apps Script del Google Sheet del catálogo.
-// Sirve los datos de las hojas "Productos", "Variantes" e "Imagenes" como JSON,
+// Sirve los datos de las hojas "Productos", "Variantes", "Imagenes" y
+// "Configuracion" (clave | valor, ej. tasa_usd | 4000) como JSON,
 // para que el sitio web los lea automáticamente. No requiere instalar nada más.
 
 var CACHE_KEY = 'catalogo_json_v1'
@@ -36,6 +37,7 @@ function doGet(e) {
       marca: p.marca || '',
       descripcion: p.descripcion,
       precio: Number(p.precio) || 0,
+      precio_usd: Number(p.precio_usd) || 0,
       imagenes: (imagenesPorProducto[id] || []).map(function (img) {
         return img.url
       }),
@@ -55,7 +57,17 @@ function doGet(e) {
     }
   })
 
-  var json = JSON.stringify({ productos: productos, variantes: variantes, actualizado: new Date().toISOString() })
+  var config = {}
+  sheetToObjects(ss.getSheetByName('Configuracion')).forEach(function (fila) {
+    if (fila.clave) config[String(fila.clave).trim()] = fila.valor
+  })
+
+  var json = JSON.stringify({
+    productos: productos,
+    variantes: variantes,
+    config: config,
+    actualizado: new Date().toISOString(),
+  })
   cache.put(CACHE_KEY, json, CACHE_SEGUNDOS)
   return ContentService.createTextOutput(json).setMimeType(ContentService.MimeType.JSON)
 }

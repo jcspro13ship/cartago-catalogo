@@ -66,6 +66,13 @@ const TRAZOS = {
     </>
   ),
   check: <path d="m5 12.5 4.5 4.5L19 7.5" />,
+  envio: (
+    <>
+      <path d="M3 6.5h11v9H3zM14 9.5h4l3 3v3h-7" />
+      <circle cx="7" cy="17.5" r="1.8" />
+      <circle cx="17.5" cy="17.5" r="1.8" />
+    </>
+  ),
 }
 
 export default function Icono({ nombre, tamano = 22, className = '' }) {

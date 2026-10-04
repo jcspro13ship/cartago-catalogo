@@ -18,3 +18,8 @@ export const EMPRESA = {
   instagram: '', // TODO: usuario sin @, ej. 'talabarteriacartago'
   facebook: '', // TODO: URL completa de la página
 }
+
+// Tasa de cambio para mostrar precios en dólares mientras el Sheet no tenga
+// una propia (hoja "Configuracion", clave tasa_usd). Es un valor de EJEMPLO:
+// la tasa real la definen y actualizan Cartago desde el Sheet.
+export const TASA_USD_EJEMPLO = 4000
