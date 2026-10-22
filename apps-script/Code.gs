@@ -1,6 +1,6 @@
 // Este script se pega en Extensiones > Apps Script del Google Sheet del catálogo.
 // Sirve los datos de las hojas "Productos", "Variantes", "Imagenes" y
-// "Configuracion" (clave | valor, ej. tasa_usd | 4000) como JSON,
+// "Marcas" (marca | logo_url) y "Configuracion" (clave | valor, ej. tasa_usd | 3000) como JSON,
 // para que el sitio web los lea automáticamente. No requiere instalar nada más.
 
 var CACHE_KEY = 'catalogo_json_v1'
@@ -34,6 +34,7 @@ function doGet(e) {
       id: id,
       nombre: p.nombre,
       categoria: p.categoria,
+      subcategoria: p.subcategoria || '',
       marca: p.marca || '',
       descripcion: p.descripcion,
       precio: Number(p.precio) || 0,
@@ -45,6 +46,7 @@ function doGet(e) {
       destacado: esVerdadero(p.destacado),
       personalizable: esVerdadero(p.personalizable),
       nota_personalizacion: p.nota_personalizacion || '',
+      garantia: p.garantia || '',
     }
   })
 
@@ -57,6 +59,10 @@ function doGet(e) {
     }
   })
 
+  var marcas = sheetToObjects(ss.getSheetByName('Marcas')).map(function (m) {
+    return { marca: String(m.marca || ''), logo: String(m.logo_url || '') }
+  })
+
   var config = {}
   sheetToObjects(ss.getSheetByName('Configuracion')).forEach(function (fila) {
     if (fila.clave) config[String(fila.clave).trim()] = fila.valor
@@ -65,6 +71,7 @@ function doGet(e) {
   var json = JSON.stringify({
     productos: productos,
     variantes: variantes,
+    marcas: marcas,
     config: config,
     actualizado: new Date().toISOString(),
   })

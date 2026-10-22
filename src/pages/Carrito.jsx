@@ -5,6 +5,8 @@ import ImagenProducto from '../components/ImagenProducto'
 import Icono, { IconoWhatsApp } from '../components/Icono'
 import { useMoneda } from '../context/MonedaContext'
 import { linkWhatsApp } from '../utils/whatsapp'
+import { formatoPrecio } from '../utils/formato'
+import { TOPE_CONTRAENTREGA } from '../config'
 
 const ENTREGAS = {
   tienda: 'Recoger en la tienda',
@@ -12,12 +14,42 @@ const ENTREGAS = {
   internacional: 'Envío internacional',
 }
 
+// Formas de pago según la entrega. Contraentrega (Dropi) solo aplica a envíos
+// nacionales por debajo del tope y cuando todos los precios son conocidos.
+function opcionesPago(entrega, totalCop, hayPorCotizar) {
+  if (entrega === 'tienda') {
+    return { link: 'Link de pago (tarjeta, débito o transferencia)', tienda: 'Pago en la tienda' }
+  }
+  if (entrega === 'internacional') {
+    return { link: 'Link de pago en pesos colombianos', giro: 'Giro internacional (Western Union)' }
+  }
+  const opciones = { link: 'Link de pago (tarjeta, débito o transferencia)' }
+  if (!hayPorCotizar && totalCop > 0 && totalCop < TOPE_CONTRAENTREGA) {
+    opciones.contraentrega = 'Contraentrega con Dropi'
+  }
+  return opciones
+}
+
+const CIERRES = {
+  link: 'Quedo atento(a) al link de pago. ¡Gracias!',
+  tienda: 'Quedo atento(a) a la confirmación para pasar por la tienda. ¡Gracias!',
+  contraentrega: 'Quedo atento(a) a la confirmación del envío contraentrega. ¡Gracias!',
+  giro: 'Quedo atento(a) a los datos para hacer el giro. ¡Gracias!',
+}
+
+const AYUDAS = {
+  link: 'Te responderemos con la confirmación de disponibilidad y un link de pago (tarjeta, débito o transferencia).',
+  tienda: 'Te confirmamos la disponibilidad y te separamos el pedido para que pases por la tienda.',
+  contraentrega: 'Pagas al recibir el pedido. Te confirmamos el valor del envío por WhatsApp.',
+  giro: 'Te enviaremos los datos para el giro internacional y coordinamos el envío.',
+}
+
 // Código corto para que Cartago y el cliente hablen del mismo pedido por WhatsApp.
 function codigoPedido() {
   return `CT-${Date.now().toString(36).slice(-5).toUpperCase()}`
 }
 
-function construirMensaje({ items, total, hayPorCotizar, cliente, codigo, moneda, precio, formato }) {
+function construirMensaje({ items, total, hayPorCotizar, cliente, codigo, moneda, tasaUsd, precio, formato, pago, etiquetaPago }) {
   const lineas = items.flatMap((it, i) => {
     const valor = precio(it)
     const partes = [
@@ -34,8 +66,10 @@ function construirMensaje({ items, total, hayPorCotizar, cliente, codigo, moneda
     ...lineas,
     '',
     `Total: ${formato(total)}${hayPorCotizar ? ' + productos por cotizar' : ''}`,
-    ...(moneda === 'USD' ? ['(Valores en dólares aproximados: espero la cotización final en USD.)'] : []),
-    'El costo del envío lo coordinamos por aquí.',
+    ...(moneda === 'USD'
+      ? [`(Valores en dólares aproximados, tasa de ${formatoPrecio(tasaUsd)} por dólar. Espero la cotización final.)`]
+      : []),
+    ...(cliente.entrega !== 'tienda' ? ['El costo del envío lo coordinamos por aquí.'] : []),
     '',
     'Mis datos:',
     `Nombre: ${cliente.nombre}`,
@@ -44,21 +78,23 @@ function construirMensaje({ items, total, hayPorCotizar, cliente, codigo, moneda
     ...(cliente.entrega === 'internacional' ? [`País: ${cliente.pais}`] : []),
     `Entrega: ${ENTREGAS[cliente.entrega]}`,
     ...(cliente.entrega !== 'tienda' ? [`Dirección: ${cliente.direccion}`] : []),
+    `Pago: ${etiquetaPago}`,
     ...(cliente.notas ? [`Notas: ${cliente.notas}`] : []),
     '',
-    'Quedo atento(a) al link de pago. ¡Gracias!',
+    CIERRES[pago],
   ].join('\n')
 }
 
 export default function Carrito() {
   const { items, removeItem, updateCantidad, clearCart } = useCart()
-  const { moneda, setMoneda, precio, texto, formato } = useMoneda()
+  const { moneda, setMoneda, tasaUsd, precio, texto, formato } = useMoneda()
   const [cliente, setCliente] = useState({
     nombre: '',
     celular: '',
     ciudad: '',
     pais: '',
     entrega: 'tienda',
+    pago: 'link',
     direccion: '',
     notas: '',
   })
@@ -67,6 +103,10 @@ export default function Carrito() {
 
   const total = items.reduce((acc, it) => acc + precio(it) * it.cantidad, 0)
   const hayPorCotizar = items.some((it) => !(precio(it) > 0))
+  const totalCop = items.reduce((acc, it) => acc + (it.precio > 0 ? it.precio : 0) * it.cantidad, 0)
+  const pagos = opcionesPago(cliente.entrega, totalCop, hayPorCotizar)
+  // Si la forma elegida deja de aplicar (cambió la entrega o el total), vuelve al link de pago.
+  const pago = pagos[cliente.pago] ? cliente.pago : 'link'
 
   function actualizar(campo, valor) {
     setCliente((c) => ({ ...c, [campo]: valor }))
@@ -75,7 +115,8 @@ export default function Carrito() {
 
   // Un cliente del exterior casi siempre quiere ver el valor en dólares.
   function elegirEntrega(valor) {
-    actualizar('entrega', valor)
+    setCliente((c) => ({ ...c, entrega: valor, pago: 'link' }))
+    setError('')
     if (valor === 'internacional') setMoneda('USD')
   }
 
@@ -89,7 +130,7 @@ export default function Carrito() {
         <h1>¡Gracias! Ya casi está listo</h1>
         <p>
           Abrimos WhatsApp con el resumen de tu pedido. Solo falta que lo envíes: te responderemos con la
-          confirmación y el link de pago.
+          confirmación de disponibilidad y los pasos para el pago.
         </p>
         <div className="pagina-vacia-acciones">
           <a href={enviado.url} className="boton boton-whatsapp" target="_blank" rel="noopener noreferrer">
@@ -145,7 +186,19 @@ export default function Carrito() {
     }
     const codigo = codigoPedido()
     const url = linkWhatsApp(
-      construirMensaje({ items, total, hayPorCotizar, cliente: datos, codigo, moneda, precio, formato })
+      construirMensaje({
+        items,
+        total,
+        hayPorCotizar,
+        cliente: datos,
+        codigo,
+        moneda,
+        tasaUsd,
+        precio,
+        formato,
+        pago,
+        etiquetaPago: pagos[pago],
+      })
     )
     window.open(url, '_blank', 'noopener,noreferrer')
     setEnviado({ codigo, url })
@@ -215,7 +268,10 @@ export default function Carrito() {
             <span>{formato(total)}</span>
           </div>
           {moneda === 'USD' && (
-            <p className="resumen-nota">Valores en dólares aproximados. Te confirmamos la cotización final en USD por WhatsApp.</p>
+            <p className="resumen-nota">
+              Valores en dólares aproximados (tasa de {formatoPrecio(tasaUsd)} por dólar). El pago se hace por link en
+              pesos colombianos o por giro internacional.
+            </p>
           )}
 
           <div className="costura" />
@@ -258,6 +314,10 @@ export default function Carrito() {
             </label>
           )}
 
+          {cliente.entrega === 'nacional' && !pagos.contraentrega && !hayPorCotizar && totalCop >= TOPE_CONTRAENTREGA && (
+            <p className="resumen-nota">El pago contraentrega aplica para pedidos menores a {formatoPrecio(TOPE_CONTRAENTREGA)}.</p>
+          )}
+
           {cliente.entrega !== 'tienda' && (
             <label className="campo">
               <span>Dirección de envío</span>
@@ -269,6 +329,16 @@ export default function Carrito() {
               />
             </label>
           )}
+
+          <fieldset className="campo-entrega">
+            <legend>Forma de pago</legend>
+            {Object.entries(pagos).map(([valor, etiqueta]) => (
+              <label key={valor} className={`opcion-entrega ${pago === valor ? 'activa' : ''}`}>
+                <input type="radio" name="pago" value={valor} checked={pago === valor} onChange={() => actualizar('pago', valor)} />
+                {etiqueta}
+              </label>
+            ))}
+          </fieldset>
 
           <label className="campo">
             <span>
@@ -286,10 +356,7 @@ export default function Carrito() {
           <button type="submit" className="boton boton-whatsapp boton-ancho">
             <IconoWhatsApp tamano={20} /> Enviar pedido por WhatsApp
           </button>
-          <p className="resumen-ayuda">
-            Te responderemos con la confirmación de disponibilidad y un link de pago (tarjeta, débito o
-            transferencia).
-          </p>
+          <p className="resumen-ayuda">{AYUDAS[pago]}</p>
         </form>
       </div>
     </div>

@@ -4,6 +4,7 @@ import { useCatalogo, stockTotal } from '../context/CatalogoContext'
 import ProductoCard from '../components/ProductoCard'
 import Icono from '../components/Icono'
 import { normalizar } from '../utils/formato'
+import { ordenarCategorias, ordenarSubcategorias, infoCategoria } from '../utils/categorias'
 
 const TAMANO_PAGINA = 24
 const TODAS = 'Todas'
@@ -19,6 +20,9 @@ export default function Catalogo() {
   const { productos, variantes, cargando } = useCatalogo()
   const [params, setParams] = useSearchParams()
   const categoria = params.get('categoria') || TODAS
+  const subcategoria = params.get('sub') || TODAS
+  const marca = params.get('marca') || TODAS
+  const soloPersonalizables = params.get('personalizable') === '1'
   const busqueda = params.get('q') || ''
   const [orden, setOrden] = useState('relevancia')
   const [soloDisponibles, setSoloDisponibles] = useState(false)
@@ -30,6 +34,8 @@ export default function Catalogo() {
     const nuevos = new URLSearchParams(params)
     if (!valor || valor === TODAS) nuevos.delete(clave)
     else nuevos.set(clave, valor)
+    // Al cambiar de categoría, la subcategoría anterior ya no aplica.
+    if (clave === 'categoria') nuevos.delete('sub')
     setParams(nuevos, { replace: true })
   }
 
@@ -43,15 +49,32 @@ export default function Catalogo() {
     return mapa
   }, [activos, variantes])
 
-  const categorias = useMemo(() => [TODAS, ...new Set(activos.map((p) => p.categoria))], [activos])
+  const categorias = useMemo(
+    () => [TODAS, ...ordenarCategorias([...new Set(activos.map((p) => p.categoria).filter(Boolean))])],
+    [activos]
+  )
+
+  const subcategorias = useMemo(() => {
+    if (categoria === TODAS) return []
+    const subs = new Set(activos.filter((p) => p.categoria === categoria).map((p) => p.subcategoria).filter(Boolean))
+    return subs.size > 1 ? [TODAS, ...ordenarSubcategorias(categoria, [...subs])] : []
+  }, [activos, categoria])
+
+  const marcas = useMemo(
+    () => [...new Set(activos.map((p) => p.marca).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es')),
+    [activos]
+  )
 
   const productosFiltrados = useMemo(() => {
     const termino = normalizar(busqueda.trim())
     const lista = activos.filter((p) => {
       if (categoria !== TODAS && p.categoria !== categoria) return false
+      if (subcategoria !== TODAS && p.subcategoria !== subcategoria) return false
+      if (marca !== TODAS && normalizar(p.marca) !== normalizar(marca)) return false
+      if (soloPersonalizables && !p.personalizable) return false
       if (soloDisponibles && !(stockPorProducto[p.id] > 0)) return false
       if (termino) {
-        const texto = normalizar(`${p.nombre} ${p.categoria} ${p.marca} ${p.descripcion}`)
+        const texto = normalizar(`${p.nombre} ${p.categoria} ${p.subcategoria} ${p.marca} ${p.descripcion}`)
         if (!termino.split(/\s+/).every((t) => texto.includes(t))) return false
       }
       return true
@@ -78,11 +101,11 @@ export default function Catalogo() {
       )
     }
     return lista
-  }, [activos, categoria, busqueda, soloDisponibles, orden, stockPorProducto])
+  }, [activos, categoria, subcategoria, marca, soloPersonalizables, busqueda, soloDisponibles, orden, stockPorProducto])
 
   useEffect(() => {
     setVisibles(TAMANO_PAGINA)
-  }, [categoria, busqueda, soloDisponibles, orden])
+  }, [categoria, subcategoria, marca, soloPersonalizables, busqueda, soloDisponibles, orden])
 
   const productosVisibles = productosFiltrados.slice(0, visibles)
   const hayMas = visibles < productosFiltrados.length
@@ -91,8 +114,19 @@ export default function Catalogo() {
     <div className="pagina-catalogo">
       <section className="catalogo-cabecera">
         <div className="contenedor">
-          <p className="sobretitulo">Catálogo</p>
-          <h1>{categoria === TODAS ? 'Todos nuestros productos' : categoria}</h1>
+          <p className="sobretitulo">{soloPersonalizables ? 'Hazlo único' : marca !== TODAS ? `Marca ${marca}` : 'Catálogo'}</p>
+          <h1>
+            {soloPersonalizables
+              ? 'Productos que personalizamos para ti'
+              : categoria === TODAS
+                ? 'Todos nuestros productos'
+                : subcategoria !== TODAS
+                  ? `${categoria} · ${subcategoria}`
+                  : categoria}
+          </h1>
+          {categoria !== TODAS && infoCategoria(categoria) && (
+            <p className="catalogo-descripcion">{infoCategoria(categoria).descripcion}</p>
+          )}
         </div>
       </section>
 
@@ -102,7 +136,7 @@ export default function Catalogo() {
             <Icono nombre="buscar" tamano={20} />
             <input
               type="search"
-              placeholder="Buscar monturas, riendas, correas…"
+              placeholder="Buscar sillas, frenos, pecheras…"
               value={busqueda}
               onChange={(e) => cambiarParam('q', e.target.value)}
               aria-label="Buscar producto"
@@ -121,13 +155,45 @@ export default function Catalogo() {
                 {c}
               </button>
             ))}
+            <button
+              role="tab"
+              aria-selected={soloPersonalizables}
+              className={`chip chip-especial ${soloPersonalizables ? 'chip-activo' : ''}`}
+              onClick={() => cambiarParam('personalizable', soloPersonalizables ? '' : '1')}
+            >
+              Hazlo único
+            </button>
           </div>
+
+          {subcategorias.length > 0 && (
+            <div className="catalogo-chips catalogo-subchips" aria-label="Subcategorías">
+              {subcategorias.map((s) => (
+                <button
+                  key={s}
+                  className={`chip chip-sub ${subcategoria === s ? 'chip-activo' : ''}`}
+                  onClick={() => cambiarParam('sub', s)}
+                >
+                  {s === TODAS ? 'Todas' : s}
+                </button>
+              ))}
+            </div>
+          )}
 
           <div className="catalogo-barra">
             <span className="catalogo-conteo">
               {cargando ? 'Cargando…' : `${productosFiltrados.length} ${productosFiltrados.length === 1 ? 'producto' : 'productos'}`}
             </span>
             <div className="catalogo-controles">
+              {marcas.length > 1 && (
+                <select value={marca} onChange={(e) => cambiarParam('marca', e.target.value)} aria-label="Filtrar por marca">
+                  <option value={TODAS}>Todas las marcas</option>
+                  {marcas.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+              )}
               <label className="interruptor">
                 <input type="checkbox" checked={soloDisponibles} onChange={(e) => setSoloDisponibles(e.target.checked)} />
                 <span>Solo disponibles</span>

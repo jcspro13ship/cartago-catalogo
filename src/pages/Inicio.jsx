@@ -5,7 +5,9 @@ import ProductoCard from '../components/ProductoCard'
 import ImagenProducto from '../components/ImagenProducto'
 import Icono, { IconoWhatsApp } from '../components/Icono'
 import { linkWhatsApp } from '../utils/whatsapp'
-import { EMPRESA } from '../config'
+import { EMPRESA, MARCAS } from '../config'
+import LogoMarca from '../components/LogoMarca'
+import { ordenarCategorias, infoCategoria } from '../utils/categorias'
 
 const BASE = import.meta.env.BASE_URL
 
@@ -23,7 +25,7 @@ const PILARES = [
   {
     icono: 'personalizar',
     titulo: 'Piezas personalizadas',
-    texto: 'Iniciales, repujados y medidas a tu gusto, hechos a mano.',
+    texto: 'Bordados, repujados y medidas a tu gusto, hechos a mano.',
   },
   {
     icono: 'multimarca',
@@ -48,7 +50,19 @@ export default function Inicio() {
         if (actual.portada.imagenes.length === 0 && p.imagenes.length > 0) actual.portada = p
       }
     })
-    return [...mapa.values()]
+    const orden = ordenarCategorias([...mapa.keys()])
+    return orden.map((nombre) => mapa.get(nombre))
+  }, [activos])
+
+  // Marcas en el orden de config; solo las que tienen productos, más las
+  // que aparezcan en el Sheet y no estén en esa lista.
+  const marcas = useMemo(() => {
+    const conProductos = new Set(activos.map((p) => p.marca).filter(Boolean))
+    const ordenadas = MARCAS.filter((m) => conProductos.has(m))
+    conProductos.forEach((m) => {
+      if (!ordenadas.includes(m)) ordenadas.push(m)
+    })
+    return ordenadas
   }, [activos])
 
   const destacados = useMemo(() => {
@@ -116,6 +130,7 @@ export default function Inicio() {
                 <ImagenProducto producto={c.portada} className="categoria-card-imagen" sizes="(max-width: 640px) 50vw, 280px" />
                 <div className="categoria-card-texto">
                   <h3>{c.nombre}</h3>
+                  {infoCategoria(c.nombre) && <p>{infoCategoria(c.nombre).descripcion}</p>}
                   <span>
                     {c.cantidad} {c.cantidad === 1 ? 'producto' : 'productos'}
                   </span>
@@ -125,6 +140,19 @@ export default function Inicio() {
           </div>
         </section>
       )}
+
+      <section className="contenedor">
+        <Link to="/hazlo-unico" className="banda-unico">
+          <div>
+            <p className="sobretitulo sobretitulo-claro">Hazlo único</p>
+            <h2>Bordamos el nombre de tu caballo, tu criadero o tus iniciales</h2>
+            <p>Silla Chaparral en tus colores y repujados, aperos a tono y frenos bajo medida con garantía de cambio.</p>
+          </div>
+          <span className="boton boton-claro">
+            Personalizar <Icono nombre="flecha" tamano={18} />
+          </span>
+        </Link>
+      </section>
 
       <section className="seccion seccion-tono">
         <div className="contenedor">
@@ -152,6 +180,24 @@ export default function Inicio() {
           )}
         </div>
       </section>
+
+      {marcas.length > 0 && (
+        <section className="seccion contenedor marcas">
+          <div className="seccion-encabezado">
+            <div>
+              <p className="sobretitulo">Tienda multimarca</p>
+              <h2>Las marcas que respaldamos</h2>
+            </div>
+          </div>
+          <div className="marcas-grid">
+            {marcas.map((m) => (
+              <Link key={m} to={`/catalogo?marca=${encodeURIComponent(m)}`} className="marca-tarjeta" aria-label={`Ver productos ${m}`}>
+                <LogoMarca marca={m} />
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="legado">
         <div className="contenedor legado-interior">

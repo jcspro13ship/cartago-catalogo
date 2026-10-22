@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { useCatalogo, variantesDe, stockTotal } from '../context/CatalogoContext'
 import { useCart } from '../context/CartContext'
 import GaleriaProducto from '../components/GaleriaProducto'
+import LogoMarca from '../components/LogoMarca'
 import ProductoCard from '../components/ProductoCard'
 import Icono, { IconoWhatsApp } from '../components/Icono'
 import { useMoneda } from '../context/MonedaContext'
@@ -48,7 +49,10 @@ export default function ProductoDetalle() {
 
   const relacionados = useMemo(() => {
     if (!producto) return []
-    return productos.filter((p) => p.activo && p.categoria === producto.categoria && p.id !== producto.id).slice(0, 4)
+    const otros = productos.filter((p) => p.activo && p.categoria === producto.categoria && p.id !== producto.id)
+    // Primero los de la misma subcategoría (otros frenos si estás viendo un freno).
+    otros.sort((a, b) => (b.subcategoria === producto.subcategoria ? 1 : 0) - (a.subcategoria === producto.subcategoria ? 1 : 0))
+    return otros.slice(0, 4)
   }, [productos, producto])
 
   if (cargando) {
@@ -109,6 +113,16 @@ export default function ProductoDetalle() {
           <span>/</span>
           <Link to={`/catalogo?categoria=${encodeURIComponent(producto.categoria)}`}>{producto.categoria}</Link>
           <span>/</span>
+          {producto.subcategoria && (
+            <>
+              <Link
+                to={`/catalogo?categoria=${encodeURIComponent(producto.categoria)}&sub=${encodeURIComponent(producto.subcategoria)}`}
+              >
+                {producto.subcategoria}
+              </Link>
+              <span>/</span>
+            </>
+          )}
           <span aria-current="page">{producto.nombre}</span>
         </nav>
 
@@ -116,13 +130,20 @@ export default function ProductoDetalle() {
           <GaleriaProducto producto={producto} />
 
           <div className="producto-info">
-            <p className="sobretitulo">
-              {producto.categoria}
-              {producto.marca ? ` · ${producto.marca}` : ''}
-            </p>
+            <div className="producto-cabecera">
+              <p className="sobretitulo">{producto.subcategoria || producto.categoria}</p>
+              <LogoMarca marca={producto.marca} className="logo-marca-grande" />
+            </div>
             <h1>{producto.nombre}</h1>
             <p className={`producto-precio ${precio(producto) > 0 ? '' : 'consultar'}`}>{texto(producto)}</p>
             <p className="producto-descripcion">{producto.descripcion}</p>
+
+            {producto.garantia && (
+              <div className="producto-garantia">
+                <Icono nombre="check" tamano={20} />
+                <p>{producto.garantia}</p>
+              </div>
+            )}
 
             {tieneColores && (
               <div className="selector">
@@ -168,7 +189,7 @@ export default function ProductoDetalle() {
                     setPersonalizacion(e.target.value)
                     setAgregado(false)
                   }}
-                  placeholder={producto.nota_personalizacion || 'Cuéntanos el detalle que quieres (iniciales, medidas, repujado…)'}
+                  placeholder={producto.nota_personalizacion || 'Bordado con el nombre del caballo, del criadero o tus iniciales.'}
                 />
               </label>
             )}

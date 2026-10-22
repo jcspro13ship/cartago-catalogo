@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import ImagenProducto from './ImagenProducto'
+import LogoMarca from './LogoMarca'
 import { useMoneda } from '../context/MonedaContext'
 
 export default function ProductoCard({ producto, stock }) {
@@ -16,7 +17,10 @@ export default function ProductoCard({ producto, stock }) {
         ) : null}
       </div>
       <div className="producto-card-info">
-        <p className="producto-card-categoria">{producto.categoria}</p>
+        <div className="producto-card-cabecera">
+          <p className="producto-card-categoria">{producto.subcategoria || producto.categoria}</p>
+          <LogoMarca marca={producto.marca} className="logo-marca-chica" />
+        </div>
         <h3>{producto.nombre}</h3>
         <p className={`producto-card-precio ${precio(producto) > 0 ? '' : 'consultar'}`}>{texto(producto)}</p>
       </div>

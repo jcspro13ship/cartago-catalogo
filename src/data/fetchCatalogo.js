@@ -16,7 +16,10 @@ function normalizarProductos(productos) {
     id: String(p.id),
     precio: Number(p.precio) || 0,
     precio_usd: Number(p.precio_usd) || 0,
-    marca: p.marca ? String(p.marca) : '',
+    marca: p.marca ? String(p.marca).trim() : '',
+    subcategoria: p.subcategoria ? String(p.subcategoria).trim() : '',
+    categoria: p.categoria ? String(p.categoria).trim() : '',
+    garantia: p.garantia ? String(p.garantia) : '',
     imagenes: Array.isArray(p.imagenes) ? p.imagenes.filter(Boolean) : p.imagen ? [p.imagen] : [],
     activo: esVerdadero(p.activo),
     destacado: esVerdadero(p.destacado),
@@ -35,9 +38,13 @@ function normalizarVariantes(variantes) {
 }
 
 // Ajustes generales que Cartago edita en la hoja "Configuracion" (clave | valor).
-function normalizarConfig(config) {
+function normalizarConfig(config, marcas) {
   const tasa = Number(config && config.tasa_usd)
-  return { tasaUsd: tasa > 0 ? tasa : TASA_USD_EJEMPLO }
+  const logos = {}
+  ;(Array.isArray(marcas) ? marcas : []).forEach((m) => {
+    if (m && m.marca && m.logo) logos[String(m.marca).trim()] = String(m.logo)
+  })
+  return { tasaUsd: tasa > 0 ? tasa : TASA_USD_EJEMPLO, logosMarcas: logos }
 }
 
 function datosEjemplo() {
@@ -57,7 +64,7 @@ function leerCache() {
     return {
       productos: normalizarProductos(data.productos),
       variantes: normalizarVariantes(data.variantes),
-      config: normalizarConfig(data.config),
+      config: normalizarConfig(data.config, data.marcas),
       fuente: 'cache',
     }
   } catch {
@@ -95,7 +102,7 @@ export async function cargarCatalogo() {
     return {
       productos: normalizarProductos(data.productos),
       variantes: normalizarVariantes(data.variantes),
-      config: normalizarConfig(data.config),
+      config: normalizarConfig(data.config, data.marcas),
       fuente: 'sheets',
     }
   } catch (err) {

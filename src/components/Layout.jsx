@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useCart } from '../context/CartContext'
 import { useMoneda } from '../context/MonedaContext'
-import { EMPRESA } from '../config'
+import { EMPRESA, TRANSPORTADORAS } from '../config'
 import { linkWhatsApp } from '../utils/whatsapp'
 import Icono, { IconoWhatsApp } from './Icono'
 
@@ -44,6 +44,7 @@ export default function Layout() {
               Inicio
             </NavLink>
             <NavLink to="/catalogo">Catálogo</NavLink>
+            <NavLink to="/hazlo-unico">Hazlo único</NavLink>
             <NavLink to="/nosotros">Nosotros</NavLink>
             <a href={linkWhatsApp('Hola, quisiera recibir asesoría de Talabartería Cartago.')} target="_blank" rel="noopener noreferrer">
               Contacto
@@ -108,6 +109,7 @@ function Footer() {
           <h4>Explora</h4>
           <ul>
             <li><Link to="/catalogo">Catálogo completo</Link></li>
+            <li><Link to="/hazlo-unico">Hazlo único</Link></li>
             <li><Link to="/nosotros">Nuestra historia</Link></li>
             <li><Link to="/carrito">Mi pedido</Link></li>
           </ul>
@@ -122,10 +124,16 @@ function Footer() {
                 <span>{[EMPRESA.direccion, EMPRESA.ciudad].filter(Boolean).join(' · ')}</span>
               </li>
             )}
-            {EMPRESA.horario && (
+            {EMPRESA.horario && EMPRESA.horario.length > 0 && (
               <li>
                 <Icono nombre="reloj" tamano={18} />
-                <span>{EMPRESA.horario}</span>
+                <span>
+                  {EMPRESA.horario.map((linea) => (
+                    <span key={linea} className="footer-linea">
+                      {linea}
+                    </span>
+                  ))}
+                </span>
               </li>
             )}
             {EMPRESA.telefono && (
@@ -134,10 +142,6 @@ function Footer() {
                 <a href={`tel:${EMPRESA.telefono.replace(/\s/g, '')}`}>{EMPRESA.telefono}</a>
               </li>
             )}
-            <li>
-              <Icono nombre="envio" tamano={18} />
-              <span>Envíos a todo Colombia y al exterior</span>
-            </li>
             <li>
               <IconoWhatsApp tamano={18} />
               <a href={linkWhatsApp('Hola, quisiera recibir asesoría de Talabartería Cartago.')} target="_blank" rel="noopener noreferrer">
@@ -159,6 +163,14 @@ function Footer() {
               )}
             </div>
           )}
+        </div>
+      </div>
+      <div className="contenedor footer-envios">
+        <span>Envíos a todo Colombia y al exterior con</span>
+        <div className="footer-envios-logos">
+          {TRANSPORTADORAS.map((t) => (
+            <img key={t.nombre} src={t.logo} alt={t.nombre} title={t.nombre} width="40" height="40" loading="lazy" />
+          ))}
         </div>
       </div>
       <div className="contenedor footer-legal">
