@@ -18,7 +18,7 @@ Panel /admin ──(foto firmada por Apps Script)──► Cloudinary
    `Código.gs` y pegar `apps-script/Code.gs` de este repositorio. Guardar.
 3. Recargar el Sheet. Aparece el menú **Catálogo web**.
 4. **Catálogo web > 1. Configurar la hoja**. La primera vez Google pide
-   autorizar el script (cuenta de JCS Emprende). Crea las pestañas
+   autorizar el script (cuenta de JCS Consultoría). Crea las pestañas
    Productos, Variantes, Imagenes, Marcas, Configuracion, Listas e Historial,
    con las categorías, las marcas y la tasa del dólar ($3.000).
 5. **Catálogo web > 2. Crear usuario del panel**, una vez por persona:

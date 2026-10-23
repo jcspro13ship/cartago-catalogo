@@ -176,7 +176,7 @@ function Footer() {
       <div className="contenedor footer-legal">
         <span>© {anio} {EMPRESA.razonSocial}</span>
         <span>
-          Desarrollado por <strong>JCS Emprende</strong> · Cree · Emprende · Inspira
+          Desarrollado por <strong>JCS Consultoría Developments</strong>
         </span>
       </div>
     </footer>
