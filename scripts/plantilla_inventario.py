@@ -8,7 +8,6 @@ Requiere openpyxl.
 import sys
 
 from openpyxl import Workbook
-from openpyxl.comments import Comment
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.worksheet.datavalidation import DataValidation
 
@@ -42,8 +41,8 @@ def tabla(ws, columnas, notas=None, congelar='B2'):
         c.fill = relleno_enc
         c.alignment = Alignment(vertical='center', wrap_text=True)
         ws.column_dimensions[c.column_letter].width = ancho
-        if nombre in notas:
-            c.comment = Comment(notas[nombre], 'JCS Emprende')
+        # Las notas emergentes (comentarios) inflan el archivo y la carga a
+        # Drive; la explicación de cada columna está en la pestaña Léeme.
     ws.row_dimensions[1].height = 24
     ws.freeze_panes = congelar
 

@@ -1,0 +1,177 @@
+import { useState } from 'react'
+import { formatoPrecio } from '../utils/formato'
+
+export default function Ajustes({ datos, usuarios, sesion, ejecutar }) {
+  return (
+    <section>
+      <div className="admin-barra">
+        <div>
+          <h1>Ajustes</h1>
+          <p className="admin-sub">Tasa del dólar, marcas y usuarios del panel.</p>
+        </div>
+      </div>
+      <div className="admin-editor-grid">
+        <Tasa actual={Number(datos.config.tasa_usd) || 0} ejecutar={ejecutar} />
+        <Marcas marcas={datos.marcas} ejecutar={ejecutar} />
+        <Usuarios usuarios={usuarios} ejecutar={ejecutar} />
+        <MiClave sesion={sesion} ejecutar={ejecutar} />
+      </div>
+    </section>
+  )
+}
+
+function useAccion() {
+  const [estado, setEstado] = useState({ ocupado: false, error: '' })
+  async function correr(fn) {
+    setEstado({ ocupado: true, error: '' })
+    try {
+      await fn()
+      setEstado({ ocupado: false, error: '' })
+      return true
+    } catch (err) {
+      setEstado({ ocupado: false, error: err.message })
+      return false
+    }
+  }
+  return [estado, correr]
+}
+
+function Tasa({ actual, ejecutar }) {
+  const [valor, setValor] = useState(String(actual || ''))
+  const [estado, correr] = useAccion()
+  return (
+    <form
+      className="admin-bloque"
+      onSubmit={(e) => {
+        e.preventDefault()
+        correr(() => ejecutar('guardarConfig', { config: { tasa_usd: Number(valor) } }, 'Tasa del dólar actualizada.'))
+      }}
+    >
+      <h2>Tasa del dólar</h2>
+      <p className="admin-sub">Tasa actual: {actual ? formatoPrecio(actual) : 'sin definir'} por dólar. Se recomienda actualizarla cada 8 días.</p>
+      <label className="campo">
+        <span>Pesos por dólar</span>
+        <input type="number" min="1" inputMode="numeric" value={valor} onChange={(e) => setValor(e.target.value)} />
+      </label>
+      {estado.error && <p className="error">{estado.error}</p>}
+      <button className="boton boton-primario" disabled={estado.ocupado || !(Number(valor) > 0) || Number(valor) === actual}>
+        Guardar tasa
+      </button>
+    </form>
+  )
+}
+
+function Marcas({ marcas, ejecutar }) {
+  const [lista, setLista] = useState(() => marcas.map((m) => ({ marca: m.marca, logo: m.logo || '' })))
+  const [estado, correr] = useAccion()
+  const cambiar = (i, campo, v) => setLista((l) => l.map((m, j) => (j === i ? { ...m, [campo]: v } : m)))
+  return (
+    <form
+      className="admin-bloque"
+      onSubmit={(e) => {
+        e.preventDefault()
+        correr(() => ejecutar('guardarMarcas', { marcas: lista.filter((m) => m.marca.trim()) }, 'Marcas guardadas.'))
+      }}
+    >
+      <h2>Marcas</h2>
+      <p className="admin-sub">El link del logo es opcional: Cartago, San Fermín y Mesacé ya tienen logo en la tienda.</p>
+      {lista.map((m, i) => (
+        <div key={i} className="admin-color-fila admin-marca-fila">
+          <input placeholder="Marca" value={m.marca} onChange={(e) => cambiar(i, 'marca', e.target.value)} />
+          <input placeholder="Link del logo (opcional)" value={m.logo} onChange={(e) => cambiar(i, 'logo', e.target.value)} />
+          <button type="button" className="admin-quitar" onClick={() => setLista((l) => l.filter((_, j) => j !== i))} aria-label="Quitar marca">
+            ×
+          </button>
+        </div>
+      ))}
+      <button type="button" className="admin-enlace" onClick={() => setLista((l) => [...l, { marca: '', logo: '' }])}>
+        + Agregar marca
+      </button>
+      {estado.error && <p className="error">{estado.error}</p>}
+      <button className="boton boton-primario" disabled={estado.ocupado}>
+        Guardar marcas
+      </button>
+    </form>
+  )
+}
+
+function Usuarios({ usuarios, ejecutar }) {
+  const [nuevo, setNuevo] = useState({ usuario: '', nombre: '', clave: '' })
+  const [estado, correr] = useAccion()
+  return (
+    <form
+      className="admin-bloque"
+      onSubmit={async (e) => {
+        e.preventDefault()
+        const ok = await correr(() =>
+          ejecutar('crearUsuario', { nuevoUsuario: nuevo.usuario.trim().toLowerCase(), nombre: nuevo.nombre, clave: nuevo.clave }, 'Usuario creado.')
+        )
+        if (ok) setNuevo({ usuario: '', nombre: '', clave: '' })
+      }}
+    >
+      <h2>Usuarios del panel</h2>
+      <ul className="admin-usuarios">
+        {usuarios.map((u) => (
+          <li key={u.usuario}>
+            <strong>{u.nombre}</strong> <small>{u.usuario}</small>
+          </li>
+        ))}
+      </ul>
+      <h3>Crear usuario</h3>
+      <div className="admin-dos">
+        <label className="campo">
+          <span>Usuario</span>
+          <input value={nuevo.usuario} onChange={(e) => setNuevo({ ...nuevo, usuario: e.target.value })} placeholder="ej. marcela" autoComplete="off" />
+        </label>
+        <label className="campo">
+          <span>Nombre</span>
+          <input value={nuevo.nombre} onChange={(e) => setNuevo({ ...nuevo, nombre: e.target.value })} placeholder="Marcela Rivera" />
+        </label>
+      </div>
+      <label className="campo">
+        <span>Contraseña inicial (mínimo 8 caracteres)</span>
+        <input type="password" autoComplete="new-password" value={nuevo.clave} onChange={(e) => setNuevo({ ...nuevo, clave: e.target.value })} />
+      </label>
+      {estado.error && <p className="error">{estado.error}</p>}
+      <button className="boton boton-primario" disabled={estado.ocupado || !nuevo.usuario || nuevo.clave.length < 8}>
+        Crear usuario
+      </button>
+    </form>
+  )
+}
+
+function MiClave({ sesion, ejecutar }) {
+  const [c, setC] = useState({ actual: '', nueva: '', repetir: '' })
+  const [estado, correr] = useAccion()
+  const coincide = c.nueva === c.repetir
+  return (
+    <form
+      className="admin-bloque"
+      onSubmit={async (e) => {
+        e.preventDefault()
+        const ok = await correr(() => ejecutar('cambiarClave', { claveActual: c.actual, claveNueva: c.nueva }, 'Contraseña actualizada.'))
+        if (ok) setC({ actual: '', nueva: '', repetir: '' })
+      }}
+    >
+      <h2>Mi contraseña</h2>
+      <p className="admin-sub">Sesión iniciada como {sesion.nombre} ({sesion.usuario}).</p>
+      <label className="campo">
+        <span>Contraseña actual</span>
+        <input type="password" autoComplete="current-password" value={c.actual} onChange={(e) => setC({ ...c, actual: e.target.value })} />
+      </label>
+      <label className="campo">
+        <span>Contraseña nueva</span>
+        <input type="password" autoComplete="new-password" value={c.nueva} onChange={(e) => setC({ ...c, nueva: e.target.value })} />
+      </label>
+      <label className="campo">
+        <span>Repite la contraseña nueva</span>
+        <input type="password" autoComplete="new-password" value={c.repetir} onChange={(e) => setC({ ...c, repetir: e.target.value })} />
+      </label>
+      {!coincide && c.repetir && <p className="error">Las contraseñas no coinciden.</p>}
+      {estado.error && <p className="error">{estado.error}</p>}
+      <button className="boton boton-primario" disabled={estado.ocupado || !c.actual || c.nueva.length < 8 || !coincide}>
+        Cambiar contraseña
+      </button>
+    </form>
+  )
+}

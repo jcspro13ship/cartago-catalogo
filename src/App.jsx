@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import Layout from './components/Layout'
 import Inicio from './pages/Inicio'
@@ -6,6 +7,9 @@ import Catalogo from './pages/Catalogo'
 import ProductoDetalle from './pages/ProductoDetalle'
 import Carrito from './pages/Carrito'
 import HazloUnico from './pages/HazloUnico'
+
+// El panel se descarga solo al entrar a /admin: la tienda pública no carga su código.
+const Admin = lazy(() => import('./admin/Admin'))
 import NoEncontrado from './pages/NoEncontrado'
 import { CartProvider } from './context/CartContext'
 import { CatalogoProvider } from './context/CatalogoContext'
@@ -17,6 +21,14 @@ export default function App() {
       <MonedaProvider>
         <CartProvider>
           <Routes>
+            <Route
+              path="admin/*"
+              element={
+                <Suspense fallback={<p className="admin-cargando">Cargando panel…</p>}>
+                  <Admin />
+                </Suspense>
+              }
+            />
             <Route path="/" element={<Layout />}>
               <Route index element={<Inicio />} />
               <Route path="nosotros" element={<Nosotros />} />
