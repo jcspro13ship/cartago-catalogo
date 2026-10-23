@@ -3,7 +3,8 @@ export const WHATSAPP_NUMBER = '573150022233'
 
 // Apps Script publicado sobre el Google Sheet del inventario (ver docs/INSTRUCTIVO_TECNICO.md).
 // Mientras esté vacío, el sitio usa los datos de ejemplo en src/data/.
-export const SHEETS_API_URL = ''
+export const SHEETS_API_URL =
+  'https://script.google.com/macros/s/AKfycbxFoxkD_9XPalQIjeWDra8BFJqRM74xSG7bjd-Gv20nGxVZ8u2vacxijJcxJEq6O6cT8A/exec'
 
 // Datos de contacto que aparecen en el pie de página y en "Nosotros".
 // Los campos vacíos simplemente no se muestran.

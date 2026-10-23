@@ -154,32 +154,34 @@ export default function Inicio() {
         </Link>
       </section>
 
-      <section className="seccion seccion-tono">
-        <div className="contenedor">
-          <div className="seccion-encabezado">
-            <div>
-              <p className="sobretitulo">Selección de la casa</p>
-              <h2>Productos destacados</h2>
+      {(cargando || destacados.length > 0) && (
+        <section className="seccion seccion-tono">
+          <div className="contenedor">
+            <div className="seccion-encabezado">
+              <div>
+                <p className="sobretitulo">Selección de la casa</p>
+                <h2>Productos destacados</h2>
+              </div>
+              <Link to="/catalogo" className="enlace-flecha">
+                Catálogo completo <Icono nombre="flecha" tamano={18} />
+              </Link>
             </div>
-            <Link to="/catalogo" className="enlace-flecha">
-              Catálogo completo <Icono nombre="flecha" tamano={18} />
-            </Link>
+            {cargando ? (
+              <div className="catalogo-grid">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="producto-card esqueleto" />
+                ))}
+              </div>
+            ) : (
+              <div className="catalogo-grid">
+                {destacados.map((p) => (
+                  <ProductoCard key={p.id} producto={p} stock={stockTotal(variantes, p.id)} />
+                ))}
+              </div>
+            )}
           </div>
-          {cargando ? (
-            <div className="catalogo-grid">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="producto-card esqueleto" />
-              ))}
-            </div>
-          ) : (
-            <div className="catalogo-grid">
-              {destacados.map((p) => (
-                <ProductoCard key={p.id} producto={p} stock={stockTotal(variantes, p.id)} />
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
+        </section>
+      )}
 
       {marcas.length > 0 && (
         <section className="seccion contenedor marcas">

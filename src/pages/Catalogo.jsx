@@ -4,6 +4,7 @@ import { useCatalogo, stockTotal } from '../context/CatalogoContext'
 import ProductoCard from '../components/ProductoCard'
 import Icono from '../components/Icono'
 import { normalizar } from '../utils/formato'
+import { linkWhatsApp } from '../utils/whatsapp'
 import { ordenarCategorias, ordenarSubcategorias, infoCategoria } from '../utils/categorias'
 
 const TAMANO_PAGINA = 24
@@ -214,6 +215,18 @@ export default function Catalogo() {
             {Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="producto-card esqueleto" />
             ))}
+          </div>
+        ) : activos.length === 0 ? (
+          <div className="catalogo-vacio">
+            <p>Estamos cargando nuestro catálogo en línea. Mientras tanto, escríbenos y te contamos qué tenemos disponible.</p>
+            <a
+              href={linkWhatsApp('Hola, quisiera saber qué productos tienen disponibles.')}
+              className="boton boton-whatsapp"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Escribir por WhatsApp
+            </a>
           </div>
         ) : productosFiltrados.length === 0 ? (
           <div className="catalogo-vacio">
