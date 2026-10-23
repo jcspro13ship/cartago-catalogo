@@ -2313,3 +2313,12 @@ img.galeria-principal {
     flex: 1 1 0;
   }
 }
+
+.hero-con-marca {
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-con-marca .contenedor {
+  position: relative;
+}

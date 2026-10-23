@@ -30,7 +30,8 @@ export default function HazloUnico() {
 
   return (
     <div className="pagina-hazlo-unico">
-      <section className="nosotros-hero">
+      <section className="nosotros-hero hero-con-marca">
+        <img className="hero-marca" src={`${import.meta.env.BASE_URL}marca-cartago.png`} alt="" aria-hidden="true" />
         <div className="contenedor">
           <p className="sobretitulo sobretitulo-claro">Hazlo único</p>
           <h1>Piezas hechas para tu caballo, con tu sello</h1>

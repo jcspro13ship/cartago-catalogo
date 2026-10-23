@@ -166,7 +166,7 @@ function Panel({ sesion, onSalir }) {
         ) : pestana === 'productos' ? (
           <ProductosAdmin datos={estado.datos} ejecutar={ejecutar} />
         ) : pestana === 'ajustes' ? (
-          <Ajustes datos={estado.datos} usuarios={estado.usuarios} sesion={sesion} ejecutar={ejecutar} />
+          <Ajustes datos={estado.datos} usuarios={estado.usuarios} sesion={sesion} ejecutar={ejecutar} recargar={recargar} />
         ) : (
           <Historial historial={estado.historial} />
         )}
