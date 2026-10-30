@@ -27,6 +27,10 @@ Panel /admin ──(foto firmada por Apps Script)──► Cloudinary
 Las contraseñas se guardan como huella cifrada (SHA-256 con sal) en las
 propiedades privadas del script; no quedan en el Sheet ni en la página.
 
+Si a alguien se le olvida la contraseña: en el Sheet, menú **Catálogo web >
+4. Restablecer contraseña de un usuario**. Pide el usuario y la contraseña
+nueva, y quita el bloqueo de 15 minutos por intentos fallidos.
+
 ## 2. Publicar el script
 
 1. En Apps Script: **Implementar > Nueva implementación > Aplicación web**.

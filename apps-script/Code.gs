@@ -12,7 +12,7 @@
 //
 // Paso a paso de instalación: docs/INSTRUCTIVO_TECNICO.md (en el repositorio del sitio)
 
-var VERSION = 4
+var VERSION = 5
 
 var ESTRUCTURA = {
   Productos: [
@@ -551,6 +551,7 @@ function onOpen() {
     .addItem('1. Configurar la hoja', 'configurarHoja')
     .addItem('2. Crear usuario del panel', 'menuCrearUsuario')
     .addItem('3. Configurar Cloudinary (fotos)', 'menuConfigurarCloudinary')
+    .addItem('4. Restablecer contraseña de un usuario', 'menuRestablecerClave')
     .addToUi()
 }
 
@@ -627,6 +628,36 @@ function menuCrearUsuario() {
     crearUsuario_(u.getResponseText(), n.getResponseText(), c.getResponseText())
     registrar_('(hoja)', 'Creó usuario', normalizarUsuario_(u.getResponseText()))
     ui.alert('Usuario creado: ' + normalizarUsuario_(u.getResponseText()))
+  } catch (err) {
+    ui.alert(err.message)
+  }
+}
+
+// Para cuando a alguien se le olvida la contraseña. Solo lo puede usar quien
+// tenga acceso de edición al Sheet, que es la misma gente que administra.
+function restablecerClave_(usuario, nueva) {
+  usuario = normalizarUsuario_(usuario)
+  var usuarios = leerUsuarios_()
+  if (!usuarios[usuario]) throw new Error('No existe el usuario "' + usuario + '". Usuarios actuales: ' + Object.keys(usuarios).join(', '))
+  if (String(nueva || '').length < 8) throw new Error('La contraseña debe tener al menos 8 caracteres.')
+  var sal = Utilities.getUuid()
+  usuarios[usuario].sal = sal
+  usuarios[usuario].hash = huella_(sal, nueva)
+  guardarUsuarios_(usuarios)
+  CacheService.getScriptCache().remove('intentos_' + usuario) // quita el bloqueo por intentos fallidos
+}
+
+function menuRestablecerClave() {
+  var ui = SpreadsheetApp.getUi()
+  var lista = Object.keys(leerUsuarios_()).join(', ') || '(no hay usuarios)'
+  var u = ui.prompt('Restablecer contraseña', 'Usuarios del panel: ' + lista + '\n\nEscribe el usuario:', ui.ButtonSet.OK_CANCEL)
+  if (u.getSelectedButton() !== ui.Button.OK) return
+  var c = ui.prompt('Restablecer contraseña', 'Contraseña nueva para "' + normalizarUsuario_(u.getResponseText()) + '" (mínimo 8 caracteres):', ui.ButtonSet.OK_CANCEL)
+  if (c.getSelectedButton() !== ui.Button.OK) return
+  try {
+    restablecerClave_(u.getResponseText(), c.getResponseText())
+    registrar_('(hoja)', 'Restableció contraseña', normalizarUsuario_(u.getResponseText()))
+    ui.alert('Contraseña actualizada. Ya puedes entrar al panel con el usuario ' + normalizarUsuario_(u.getResponseText()) + '.')
   } catch (err) {
     ui.alert(err.message)
   }
