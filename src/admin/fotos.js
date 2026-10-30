@@ -17,9 +17,11 @@ export async function reducirImagen(archivo, maximo = 2000) {
 // Traduce los errores de Cloudinary más comunes a algo que se entienda.
 function mensajeCloudinary(texto) {
   const t = String(texto || '')
-  if (/signature|api key|api_key|cloud name|cloud_name/i.test(t)) {
-    return 'Los datos de Cloudinary no coinciden. Revísalos en el Sheet: Catálogo web > 3. Configurar Cloudinary.'
-  }
+  // Se agrega el texto original de Cloudinary (nunca incluye la clave secreta):
+  // dice cuál de los tres datos está mal.
+  if (/unknown api key/i.test(t)) return `La API Key de Cloudinary no es correcta. Vuelve a pegarla en el Sheet (Catálogo web > 3). Detalle: ${t}`
+  if (/cloud_name|cloud name/i.test(t)) return `El Cloud name de Cloudinary no es correcto. Vuelve a pegarlo en el Sheet (Catálogo web > 3). Detalle: ${t}`
+  if (/signature/i.test(t)) return `El API Secret de Cloudinary no coincide con la API Key. Vuelve a pegarlo en el Sheet (Catálogo web > 3). Detalle: ${t}`
   if (/invalid image|unsupported|not a valid/i.test(t)) {
     return 'El archivo no es una imagen válida. Si es un link de Drive, compártelo como "Cualquier persona con el enlace".'
   }
@@ -36,9 +38,9 @@ async function enviarACloudinary(file, nombre) {
   datos.append('timestamp', String(firma.timestamp))
   datos.append('folder', firma.folder)
   datos.append('signature', firma.signature)
-  const res = await fetch(`https://api.cloudinary.com/v1_1/${firma.cloudName}/image/upload`, { method: 'POST', body: datos })
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${encodeURIComponent(firma.cloudName)}/image/upload`, { method: 'POST', body: datos })
   const json = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(mensajeCloudinary(json.error && json.error.message))
+  if (!res.ok) throw new Error(mensajeCloudinary((json.error && json.error.message) || `Cloudinary respondió ${res.status}`))
   return json.secure_url
 }
 
