@@ -14,20 +14,62 @@ export async function reducirImagen(archivo, maximo = 2000) {
   )
 }
 
-export async function subirFoto(archivo) {
+// Traduce los errores de Cloudinary más comunes a algo que se entienda.
+function mensajeCloudinary(texto) {
+  const t = String(texto || '')
+  if (/signature|api key|api_key|cloud name|cloud_name/i.test(t)) {
+    return 'Los datos de Cloudinary no coinciden. Revísalos en el Sheet: Catálogo web > 3. Configurar Cloudinary.'
+  }
+  if (/invalid image|unsupported|not a valid/i.test(t)) {
+    return 'El archivo no es una imagen válida. Si es un link de Drive, compártelo como "Cualquier persona con el enlace".'
+  }
+  return t || 'No se pudo subir la foto.'
+}
+
+async function enviarACloudinary(file, nombre) {
   const firma = await llamar('firmaFoto')
-  const blob = await reducirImagen(archivo)
-  if (firma.mock) return URL.createObjectURL(blob)
+  if (firma.mock) return typeof file === 'string' ? file : URL.createObjectURL(file)
   const datos = new FormData()
-  datos.append('file', blob, archivo.name.replace(/\.[^.]+$/, '') + '.jpg')
+  if (nombre) datos.append('file', file, nombre)
+  else datos.append('file', file)
   datos.append('api_key', firma.apiKey)
   datos.append('timestamp', String(firma.timestamp))
   datos.append('folder', firma.folder)
   datos.append('signature', firma.signature)
   const res = await fetch(`https://api.cloudinary.com/v1_1/${firma.cloudName}/image/upload`, { method: 'POST', body: datos })
-  const json = await res.json()
-  if (!res.ok) throw new Error((json.error && json.error.message) || 'No se pudo subir la foto.')
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(mensajeCloudinary(json.error && json.error.message))
   return json.secure_url
+}
+
+export async function subirFoto(archivo) {
+  let blob
+  try {
+    blob = await reducirImagen(archivo)
+  } catch {
+    // Formatos que el navegador no sabe abrir (p. ej. HEIC del iPhone en
+    // Chrome): se sube el original y Cloudinary lo convierte.
+    if (archivo.size > 10 * 1024 * 1024) throw new Error('La foto pesa más de 10 MB y no se pudo reducir. Envíala en JPG.')
+    return enviarACloudinary(archivo, archivo.name)
+  }
+  return enviarACloudinary(blob, archivo.name.replace(/\.[^.]+$/, '') + '.jpg')
+}
+
+// Link de una foto en Drive ("…/file/d/ID/view", "open?id=ID"…) → link de
+// descarga directa. Devuelve null si no es un archivo de Drive.
+export function linkDirectoDrive(url) {
+  const m = String(url).match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:.*&)?id=)([\w-]{20,})/)
+  return m ? `https://drive.google.com/uc?export=download&id=${m[1]}` : null
+}
+
+// Una foto pegada como link (de Drive o de cualquier página) se copia a
+// Cloudinary: así no depende de que el link original siga existiendo.
+export async function subirFotoDesdeLink(url) {
+  url = url.trim()
+  if (/drive\.google\.com\/drive\/(u\/\d+\/)?folders\//.test(url)) {
+    throw new Error('Ese es el link de una carpeta. Abre la foto en Drive y copia el link de esa foto.')
+  }
+  return enviarACloudinary(linkDirectoDrive(url) || url)
 }
 
 // Videos cortos grabados con el celular. Van tal cual a Cloudinary (el plan

@@ -7,7 +7,7 @@ const BASE = import.meta.env.BASE_URL
 const ANCHO_CHICA = 600
 
 function esLocal(url) {
-  return !/^(https?:)?\/\//.test(url) && !url.startsWith('data:')
+  return !/^(https?:|blob:|data:|\/\/)/.test(url)
 }
 
 function local(url, ancho) {

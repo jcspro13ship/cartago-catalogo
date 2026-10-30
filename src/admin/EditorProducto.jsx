@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { CATEGORIAS } from '../config'
 import { hojasDe } from '../utils/categorias'
 import { conAncho } from '../utils/imagenUrl'
-import { subirFoto } from './fotos'
+import { subirFoto, subirFotoDesdeLink } from './fotos'
 
 // Letra con la que empiezan los códigos de cada categoría (m1, e4, j2…).
 const PREFIJOS = { Monturas: 'm', Accesorios: 'a', 'Cuidado del caballo': 'c', Caninos: 'k' }
@@ -65,6 +65,7 @@ export default function EditorProducto({ producto, variantes, productos, marcas,
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
   const [linkFoto, setLinkFoto] = useState('')
+  const [errorFotos, setErrorFotos] = useState('')
   const inputFotos = useRef(null)
 
   const subcategorias = useMemo(() => {
@@ -89,7 +90,7 @@ export default function EditorProducto({ producto, variantes, productos, marcas,
   }
 
   async function agregarFotos(archivos) {
-    setError('')
+    setErrorFotos('')
     const lista = [...archivos]
     setSubiendo((n) => n + lista.length)
     for (const archivo of lista) {
@@ -97,10 +98,25 @@ export default function EditorProducto({ producto, variantes, productos, marcas,
         const url = await subirFoto(archivo)
         setFotos((fs) => [...fs, url])
       } catch (err) {
-        setError(`No se pudo subir ${archivo.name}: ${err.message}`)
+        setErrorFotos(`No se pudo subir ${archivo.name}: ${err.message}`)
       } finally {
         setSubiendo((n) => n - 1)
       }
+    }
+  }
+
+  async function agregarLink() {
+    const url = linkFoto.trim()
+    setErrorFotos('')
+    setSubiendo((n) => n + 1)
+    try {
+      const subida = await subirFotoDesdeLink(url)
+      setFotos((fs) => [...fs, subida])
+      setLinkFoto('')
+    } catch (err) {
+      setErrorFotos(`No se pudo agregar la foto del link: ${err.message}`)
+    } finally {
+      setSubiendo((n) => n - 1)
     }
   }
 
@@ -296,19 +312,24 @@ export default function EditorProducto({ producto, variantes, productos, marcas,
             }}
           />
           <div className="admin-link-foto">
-            <input placeholder="…o pega el link de una foto" value={linkFoto} onChange={(e) => setLinkFoto(e.target.value)} />
+            <input
+              placeholder="…o pega el link de una foto (también de Google Drive)"
+              value={linkFoto}
+              onChange={(e) => setLinkFoto(e.target.value)}
+            />
             <button
               type="button"
               className="boton boton-secundario"
-              disabled={!/^https?:\/\//.test(linkFoto.trim())}
-              onClick={() => {
-                setFotos((fs) => [...fs, linkFoto.trim()])
-                setLinkFoto('')
-              }}
+              disabled={!/^https?:\/\//.test(linkFoto.trim()) || subiendo > 0}
+              onClick={agregarLink}
             >
               Agregar
             </button>
           </div>
+          <p className="admin-sub">
+            Para fotos de Drive: abre la foto, toca Compartir y elige "Cualquier persona con el enlace"; luego copia el link.
+          </p>
+          {errorFotos && <p className="error">{errorFotos}</p>}
         </div>
 
         <div className="admin-bloque admin-bloque-ancho">
