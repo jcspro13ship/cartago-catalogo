@@ -16,9 +16,11 @@ export default function VideoSeccion({ url, titulo }) {
   const id = idYoutube(url)
 
   if (!id) {
+    // De Cloudinary se puede pedir un fotograma del video como portada.
+    const portada = url.includes('res.cloudinary.com') ? url.replace('/f_auto,q_auto/', '/so_1/').replace(/\.[a-z0-9]+$/i, '.jpg') : undefined
     return (
       <div className="video-seccion">
-        <video src={url} controls preload="none" playsInline title={titulo} />
+        <video src={url} poster={portada} controls preload="none" playsInline title={titulo} />
       </div>
     )
   }

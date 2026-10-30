@@ -710,3 +710,21 @@
   background: var(--blanco);
   resize: vertical;
 }
+
+.admin-video {
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid var(--linea);
+}
+
+.admin-video-acciones {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.admin-video-acciones .deshabilitado {
+  opacity: 0.6;
+  pointer-events: none;
+}

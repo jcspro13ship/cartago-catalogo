@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { formatoPrecio } from '../utils/formato'
 import { PREGUNTAS_FRECUENTES } from '../data/preguntas'
+import { subirVideo, MAX_VIDEO_MB } from './fotos'
 
 export default function Ajustes({ datos, usuarios, sesion, ejecutar }) {
   return (
@@ -72,7 +73,22 @@ const VIDEOS = [
 
 function Videos({ config, ejecutar }) {
   const [valores, setValores] = useState(() => Object.fromEntries(VIDEOS.map((v) => [v.clave, String(config[v.clave] || '')])))
+  const [subiendo, setSubiendo] = useState(null) // { clave, progreso }
   const [estado, correr] = useAccion()
+
+  async function subir(clave, archivo) {
+    if (!archivo) return
+    setSubiendo({ clave, progreso: 0 })
+    // Se sube y se guarda de una vez, para que no quede subido pero sin usar.
+    await correr(async () => {
+      const url = await subirVideo(archivo, (progreso) => setSubiendo({ clave, progreso }))
+      const nuevos = { ...valores, [clave]: url }
+      setValores(nuevos)
+      await ejecutar('guardarConfig', { config: nuevos }, 'Video subido y guardado.')
+    })
+    setSubiendo(null)
+  }
+
   return (
     <form
       className="admin-bloque"
@@ -82,22 +98,48 @@ function Videos({ config, ejecutar }) {
       }}
     >
       <h2>Videos</h2>
-      <p className="admin-sub">Pega el link de YouTube del video. Déjalo vacío para no mostrar video en esa sección.</p>
+      <p className="admin-sub">
+        Sube un video corto desde el computador o el celular (máximo {MAX_VIDEO_MB} MB), o pega el link de YouTube
+        para videos largos. Déjalo vacío para no mostrar video en esa sección.
+      </p>
       {VIDEOS.map((v) => (
-        <label key={v.clave} className="campo">
-          <span>
-            {v.titulo} <small>· {v.ayuda}</small>
-          </span>
-          <input
-            type="url"
-            placeholder="https://www.youtube.com/watch?v=…"
-            value={valores[v.clave]}
-            onChange={(e) => setValores({ ...valores, [v.clave]: e.target.value.trim() })}
-          />
-        </label>
+        <div key={v.clave} className="admin-video">
+          <label className="campo">
+            <span>
+              {v.titulo} <small>· {v.ayuda}</small>
+            </span>
+            <input
+              type="url"
+              placeholder="https://www.youtube.com/watch?v=…"
+              value={valores[v.clave]}
+              disabled={!!subiendo}
+              onChange={(e) => setValores({ ...valores, [v.clave]: e.target.value.trim() })}
+            />
+          </label>
+          <div className="admin-video-acciones">
+            <label className={`boton boton-secundario ${subiendo ? 'deshabilitado' : ''}`}>
+              {subiendo && subiendo.clave === v.clave ? `Subiendo… ${subiendo.progreso}%` : 'Subir video'}
+              <input
+                type="file"
+                accept="video/*"
+                hidden
+                disabled={!!subiendo}
+                onChange={(e) => {
+                  subir(v.clave, e.target.files[0])
+                  e.target.value = ''
+                }}
+              />
+            </label>
+            {valores[v.clave] && !subiendo && (
+              <button type="button" className="admin-enlace" onClick={() => setValores({ ...valores, [v.clave]: '' })}>
+                Quitar video
+              </button>
+            )}
+          </div>
+        </div>
       ))}
       {estado.error && <p className="error">{estado.error}</p>}
-      <button className="boton boton-primario" disabled={estado.ocupado}>
+      <button className="boton boton-primario" disabled={estado.ocupado || !!subiendo}>
         Guardar videos
       </button>
     </form>
