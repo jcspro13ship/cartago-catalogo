@@ -12,7 +12,7 @@
 //
 // Paso a paso de instalación: docs/INSTRUCTIVO_TECNICO.md (en el repositorio del sitio)
 
-var VERSION = 3
+var VERSION = 4
 
 var ESTRUCTURA = {
   Productos: [
@@ -36,14 +36,14 @@ var CATEGORIAS = {
     'Aperos', 'Jáquimas', 'Riendas', 'Frenos', 'Alfombras', 'Pellones', 'Alforjas',
     'Pecheras', 'Cinchas', 'Grupas', 'Arretrancos', 'Rejos y chipas',
     'Guardabarros', 'Arciones', 'Tarabas y estribos', 'Espuelas',
-    'Sombreros', 'Marroquinería', 'Bisutería',
+    'Sombreros', 'Prendas', 'Marroquinería', 'Bisutería',
   ],
   'Cuidado del caballo': [''],
   Caninos: ['Bozales', 'Collares', 'Pecheras', 'Traíllas', 'Brazaletes'],
 }
 var MARCAS = ['Cartago', 'San Fermín', 'Mesacé', 'Al Torno', 'Sybec', 'Natural V.', 'Cheval']
 
-var CACHE_CATALOGO = 'catalogo_json_v2'
+var CACHE_CATALOGO = 'catalogo_json_v3'
 var CACHE_SEGUNDOS = 300 // el catálogo público se relee del Sheet como mucho cada 5 min
 var SESION_SEGUNDOS = 6 * 60 * 60 // las sesiones del panel vencen a las 6 horas
 var MAX_INTENTOS = 5 // intentos fallidos antes de bloquear el usuario 15 minutos
@@ -53,13 +53,45 @@ var MAX_INTENTOS = 5 // intentos fallidos antes de bloquear el usuario 15 minuto
 // ===================================================================
 
 function doGet() {
-  var cache = CacheService.getScriptCache()
-  var json = cache.get(CACHE_CATALOGO)
+  var json = leerCacheCatalogo_()
   if (!json) {
     json = JSON.stringify(leerCatalogo_())
-    cache.put(CACHE_CATALOGO, json, CACHE_SEGUNDOS)
+    guardarCacheCatalogo_(json)
   }
   return ContentService.createTextOutput(json).setMimeType(ContentService.MimeType.JSON)
+}
+
+// CacheService guarda como máximo 100 KB por clave y el catálogo completo
+// pesa más, así que se guarda en pedazos. La clave principal dice cuántos
+// pedazos hay; al borrarla (cuando alguien edita) el caché queda inválido.
+var TAMANO_PEDAZO = 40000 // caracteres; con tildes cada uno puede ocupar 2 bytes
+
+function leerCacheCatalogo_() {
+  var cache = CacheService.getScriptCache()
+  var n = Number(cache.get(CACHE_CATALOGO))
+  if (!n) return null
+  var claves = []
+  for (var i = 0; i < n; i++) claves.push(CACHE_CATALOGO + '_' + i)
+  var pedazos = cache.getAll(claves)
+  var json = ''
+  for (var j = 0; j < n; j++) {
+    if (pedazos[claves[j]] == null) return null
+    json += pedazos[claves[j]]
+  }
+  return json
+}
+
+function guardarCacheCatalogo_(json) {
+  try {
+    var cache = CacheService.getScriptCache()
+    var pedazos = {}
+    var n = Math.ceil(json.length / TAMANO_PEDAZO)
+    for (var i = 0; i < n; i++) pedazos[CACHE_CATALOGO + '_' + i] = json.substr(i * TAMANO_PEDAZO, TAMANO_PEDAZO)
+    cache.putAll(pedazos, CACHE_SEGUNDOS)
+    cache.put(CACHE_CATALOGO, String(n), CACHE_SEGUNDOS)
+  } catch (err) {
+    // Sin caché el catálogo igual se sirve, solo que leyendo el Sheet cada vez.
+  }
 }
 
 function leerCatalogo_() {

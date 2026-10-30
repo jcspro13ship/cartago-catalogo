@@ -62,8 +62,8 @@ export const CATEGORIAS = [
       },
       {
         nombre: 'Jinete',
-        descripcion: 'Sombreros, marroquinería y bisutería',
-        hijos: hojas('Sombreros', 'Marroquinería', 'Bisutería'),
+        descripcion: 'Sombreros, prendas, marroquinería y bisutería',
+        hijos: hojas('Sombreros', 'Prendas', 'Marroquinería', 'Bisutería'),
       },
     ],
   },

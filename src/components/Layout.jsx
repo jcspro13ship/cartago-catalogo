@@ -117,6 +117,9 @@ export default function Layout() {
 // categoría abre su desplegable al pasar el mouse; en el celular, con la flecha.
 function MenuPrincipal({ abierto }) {
   const [desplegado, setDesplegado] = useState(null)
+  const { pathname, search } = useLocation()
+  // Todas las categorías llevan a /catalogo, así que la activa se decide por ?categoria=.
+  const categoriaActiva = pathname === '/catalogo' ? new URLSearchParams(search).get('categoria') : null
   const alternar = (nombre) => setDesplegado((d) => (d === nombre ? null : nombre))
 
   return (
@@ -127,9 +130,9 @@ function MenuPrincipal({ abierto }) {
           const esMega = tieneSub && cat.hijos.some((h) => h.hijos && h.hijos.length)
           return (
             <div key={cat.nombre} className={`menu-item ${tieneSub ? 'con-sub' : ''} ${desplegado === cat.nombre ? 'desplegado' : ''}`}>
-              <NavLink to={linkACamino([cat.nombre])} className="menu-enlace">
+              <Link to={linkACamino([cat.nombre])} className={`menu-enlace ${categoriaActiva === cat.nombre ? 'active' : ''}`}>
                 {cat.nombre}
-              </NavLink>
+              </Link>
               {tieneSub && (
                 <button
                   type="button"

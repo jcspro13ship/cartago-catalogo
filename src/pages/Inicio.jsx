@@ -8,9 +8,31 @@ import { linkWhatsApp } from '../utils/whatsapp'
 import { EMPRESA, MARCAS } from '../config'
 import LogoMarca from '../components/LogoMarca'
 import VideoSeccion from '../components/VideoSeccion'
+import { conAncho, srcSet } from '../utils/imagenUrl'
 import { VITRINA, linkACamino, rutaDeProducto, estaEnRuta, nodoEn } from '../utils/categorias'
 
-const BASE = import.meta.env.BASE_URL
+// Fotos de ambiente (carpeta "Favoritas portada" de Cartago), en public/fotos/portada.
+const PORTADA = 'fotos/portada/hero.webp'
+const FOTOS_VITRINA = {
+  Monturas: 'fotos/portada/monturas.webp',
+  'Para el caballo': 'fotos/portada/caballo.webp',
+  'Para el jinete': 'fotos/portada/jinete.webp',
+}
+
+function FotoFondo({ url, className, prioridad }) {
+  return (
+    <img
+      className={className}
+      src={conAncho(url, 1400)}
+      srcSet={srcSet(url)}
+      sizes="100vw"
+      alt=""
+      aria-hidden="true"
+      decoding="async"
+      {...(prioridad ? { fetchpriority: 'high' } : { loading: 'lazy' })}
+    />
+  )
+}
 
 const PILARES = [
   {
@@ -71,8 +93,8 @@ export default function Inicio() {
 
   return (
     <div className="pagina-inicio">
-      <section className="hero">
-        <img className="hero-marca" src={`${BASE}marca-cartago.png`} alt="" aria-hidden="true" />
+      <section className="hero hero-con-foto">
+        <FotoFondo url={PORTADA} className="hero-foto" prioridad />
         <div className="contenedor hero-contenido">
           <p className="sobretitulo sobretitulo-claro">Talabartería artesanal · Est. {EMPRESA.fundacion}</p>
           <h1>El cuero, el caballo y el trabajo honesto.</h1>
@@ -126,7 +148,17 @@ export default function Inicio() {
           <div className="categorias-grid">
             {categorias.map((c) => (
               <Link key={c.titulo} to={linkACamino(c.camino)} className="categoria-card">
-                <ImagenProducto producto={c.portada} className="categoria-card-imagen" sizes="(max-width: 640px) 50vw, 280px" />
+                {FOTOS_VITRINA[c.titulo] ? (
+                  <img
+                    src={conAncho(FOTOS_VITRINA[c.titulo], 600)}
+                    alt=""
+                    className="categoria-card-imagen"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                ) : (
+                  <ImagenProducto producto={c.portada} className="categoria-card-imagen" sizes="(max-width: 640px) 50vw, 280px" />
+                )}
                 <div className="categoria-card-texto">
                   <h3>{c.titulo}</h3>
                   {c.descripcion && <p>{c.descripcion}</p>}
@@ -142,6 +174,7 @@ export default function Inicio() {
 
       <section className="contenedor">
         <Link to="/hazlo-unico" className="banda-unico">
+          <FotoFondo url="fotos/portada/unico.webp" className="banda-foto" />
           <div>
             <p className="sobretitulo sobretitulo-claro">Hazlo único</p>
             <h2>Bordamos el nombre de tu caballo, tu criadero o tus iniciales</h2>
@@ -206,7 +239,8 @@ export default function Inicio() {
         </section>
       )}
 
-      <section className="legado">
+      <section className="legado legado-con-foto">
+        <FotoFondo url="fotos/portada/legado.webp" className="legado-foto" />
         <div className="contenedor legado-interior">
           <p className="sobretitulo sobretitulo-dorado">Nuestro propósito</p>
           <blockquote>

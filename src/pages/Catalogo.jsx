@@ -134,11 +134,13 @@ export default function Catalogo() {
     } else if (orden === 'nombre') {
       lista.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
     } else {
-      // Destacados primero y los agotados al final, sin alterar el orden del Sheet entre iguales.
+      // Destacados primero, luego los que tienen foto y los agotados al final,
+      // sin alterar el orden del Sheet entre iguales.
       lista.sort(
         (a, b) =>
           (disponible(stockPorProducto[a.id]) ? 0 : 1) - (disponible(stockPorProducto[b.id]) ? 0 : 1) ||
-          (b.destacado ? 1 : 0) - (a.destacado ? 1 : 0)
+          (b.destacado ? 1 : 0) - (a.destacado ? 1 : 0) ||
+          (b.imagenes.length > 0 ? 1 : 0) - (a.imagenes.length > 0 ? 1 : 0)
       )
     }
     return lista

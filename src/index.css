@@ -1531,6 +1531,7 @@ img.galeria-principal {
 }
 
 .producto-descripcion {
+  white-space: pre-line;
   color: var(--tinta-suave);
   font-size: 1.02rem;
   padding-bottom: 1.5rem;
@@ -2733,4 +2734,94 @@ img.galeria-principal {
   margin: 0 0 1.4rem;
   color: var(--tinta-suave);
   max-width: 70ch;
+}
+
+/* ---------- Fotos de ambiente ---------- */
+
+.hero-con-foto {
+  background: var(--carbon);
+}
+
+.hero-foto,
+.banda-foto,
+.legado-foto {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+/* Las fotos de portada son verticales: en computador ocupan la mitad derecha
+   y se funden con el fondo; en el celular quedan detrás del texto. */
+.hero-foto {
+  left: auto;
+  width: 55%;
+  object-position: center 40%;
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 35%);
+  mask-image: linear-gradient(to right, transparent 0%, #000 35%);
+}
+
+.hero-con-foto::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(90deg, rgba(33, 35, 34, 0.95) 0%, rgba(33, 35, 34, 0.75) 45%, rgba(33, 35, 34, 0.15) 100%);
+  pointer-events: none;
+}
+
+.hero-con-foto .hero-contenido {
+  z-index: 2;
+}
+
+.hero-con-foto .hero-texto,
+.hero-con-foto h1 {
+  max-width: 17ch;
+}
+
+.hero-con-foto .hero-texto {
+  max-width: 46ch;
+}
+
+@media (max-width: 760px) {
+  .hero-foto {
+    width: 100%;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .hero-con-foto::before {
+    background: linear-gradient(180deg, rgba(33, 35, 34, 0.55) 0%, rgba(33, 35, 34, 0.88) 70%);
+  }
+}
+
+.banda-unico {
+  isolation: isolate;
+}
+
+.banda-foto {
+  z-index: -2;
+  object-position: center 30%;
+}
+
+.banda-unico::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(90deg, rgba(33, 35, 34, 0.92) 0%, rgba(33, 35, 34, 0.7) 55%, rgba(33, 35, 34, 0.35) 100%);
+}
+
+.legado-con-foto {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.legado-foto {
+  z-index: -2;
+  opacity: 0.45;
+  object-position: center 35%;
 }
