@@ -7,6 +7,7 @@ import Catalogo from './pages/Catalogo'
 import ProductoDetalle from './pages/ProductoDetalle'
 import Carrito from './pages/Carrito'
 import HazloUnico from './pages/HazloUnico'
+import PreguntasFrecuentes from './pages/PreguntasFrecuentes'
 
 // El panel se descarga solo al entrar a /admin: la tienda pública no carga su código.
 const Admin = lazy(() => import('./admin/Admin'))
@@ -34,6 +35,7 @@ export default function App() {
               <Route path="nosotros" element={<Nosotros />} />
               <Route path="catalogo" element={<Catalogo />} />
               <Route path="hazlo-unico" element={<HazloUnico />} />
+              <Route path="preguntas-frecuentes" element={<PreguntasFrecuentes />} />
               <Route path="producto/:id" element={<ProductoDetalle />} />
               <Route path="carrito" element={<Carrito />} />
               <Route path="*" element={<NoEncontrado />} />

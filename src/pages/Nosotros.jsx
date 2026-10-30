@@ -113,8 +113,8 @@ export default function Nosotros() {
 
       <section className="legado">
         <div className="contenedor legado-interior">
-          <blockquote>«Encomienda al Señor tus obras, y tus pensamientos serán afirmados.»</blockquote>
-          <p className="legado-cita">Proverbios 16:3</p>
+          <blockquote>«Y todo lo que hagáis, hacedlo de corazón, como para el Señor y no para los hombres.»</blockquote>
+          <p className="legado-cita">Colosenses 3:23</p>
           <p className="legado-memoria">En memoria y honor de David Morales, fundador de Cartago Talabartería.</p>
           <Link to="/catalogo" className="boton boton-claro">
             Ver nuestro catálogo

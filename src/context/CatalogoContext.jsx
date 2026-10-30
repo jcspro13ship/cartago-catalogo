@@ -8,7 +8,7 @@ export function CatalogoProvider({ children }) {
     const inicial = catalogoInicial()
     return inicial
       ? { ...inicial, cargando: false }
-      : { productos: [], variantes: [], config: { tasaUsd: 0, logosMarcas: {} }, cargando: true, fuente: null }
+      : { productos: [], variantes: [], config: { tasaUsd: 0, logosMarcas: {}, preguntas: null, videos: {} }, cargando: true, fuente: null }
   })
 
   useEffect(() => {
@@ -34,6 +34,23 @@ export function variantesDe(variantes, productoId) {
   return variantes.filter((v) => v.producto_id === productoId)
 }
 
+// Una variante con stock null no lleva control de inventario: siempre se
+// puede pedir y Cartago confirma por WhatsApp.
+export function hayStock(v) {
+  return v.stock === null || v.stock > 0
+}
+
+// Suma del stock de un producto; null si alguna variante no lleva control
+// (en ese caso el producto se considera disponible).
 export function stockTotal(variantes, productoId) {
-  return variantesDe(variantes, productoId).reduce((acc, v) => acc + v.stock, 0)
+  let total = 0
+  for (const v of variantesDe(variantes, productoId)) {
+    if (v.stock === null) return null
+    total += v.stock
+  }
+  return total
+}
+
+export function disponible(stock) {
+  return stock === null || stock > 0
 }

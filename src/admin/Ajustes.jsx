@@ -3,6 +3,7 @@ import { formatoPrecio } from '../utils/formato'
 import { llamar } from './api'
 import { productos as productosEjemplo } from '../data/productos'
 import { variantes as variantesEjemplo } from '../data/variantes'
+import { PREGUNTAS_FRECUENTES } from '../data/preguntas'
 
 export default function Ajustes({ datos, usuarios, sesion, ejecutar, recargar }) {
   return (
@@ -10,11 +11,13 @@ export default function Ajustes({ datos, usuarios, sesion, ejecutar, recargar })
       <div className="admin-barra">
         <div>
           <h1>Ajustes</h1>
-          <p className="admin-sub">Tasa del dólar, marcas y usuarios del panel.</p>
+          <p className="admin-sub">Tasa del dólar, videos, preguntas frecuentes, marcas y usuarios del panel.</p>
         </div>
       </div>
       <div className="admin-editor-grid">
         <Tasa actual={Number(datos.config.tasa_usd) || 0} ejecutar={ejecutar} />
+        <Videos config={datos.config} ejecutar={ejecutar} />
+        <Preguntas config={datos.config} ejecutar={ejecutar} />
         <Marcas marcas={datos.marcas} ejecutar={ejecutar} />
         <Usuarios usuarios={usuarios} ejecutar={ejecutar} />
         <MiClave sesion={sesion} ejecutar={ejecutar} />
@@ -60,6 +63,104 @@ function Tasa({ actual, ejecutar }) {
       {estado.error && <p className="error">{estado.error}</p>}
       <button className="boton boton-primario" disabled={estado.ocupado || !(Number(valor) > 0) || Number(valor) === actual}>
         Guardar tasa
+      </button>
+    </form>
+  )
+}
+
+// Links de video por sección. Sirve un link de YouTube (se recomienda) o un .mp4.
+const VIDEOS = [
+  { clave: 'video_personalizacion', titulo: 'Video de personalización', ayuda: 'Aparece en la página "Personalizados".' },
+  { clave: 'video_inicio', titulo: 'Video de la página de inicio', ayuda: 'Aparece debajo de la franja "Hazlo único".' },
+]
+
+function Videos({ config, ejecutar }) {
+  const [valores, setValores] = useState(() => Object.fromEntries(VIDEOS.map((v) => [v.clave, String(config[v.clave] || '')])))
+  const [estado, correr] = useAccion()
+  return (
+    <form
+      className="admin-bloque"
+      onSubmit={(e) => {
+        e.preventDefault()
+        correr(() => ejecutar('guardarConfig', { config: valores }, 'Videos guardados.'))
+      }}
+    >
+      <h2>Videos</h2>
+      <p className="admin-sub">Pega el link de YouTube del video. Déjalo vacío para no mostrar video en esa sección.</p>
+      {VIDEOS.map((v) => (
+        <label key={v.clave} className="campo">
+          <span>
+            {v.titulo} <small>· {v.ayuda}</small>
+          </span>
+          <input
+            type="url"
+            placeholder="https://www.youtube.com/watch?v=…"
+            value={valores[v.clave]}
+            onChange={(e) => setValores({ ...valores, [v.clave]: e.target.value.trim() })}
+          />
+        </label>
+      ))}
+      {estado.error && <p className="error">{estado.error}</p>}
+      <button className="boton boton-primario" disabled={estado.ocupado}>
+        Guardar videos
+      </button>
+    </form>
+  )
+}
+
+function Preguntas({ config, ejecutar }) {
+  const [lista, setLista] = useState(() => {
+    try {
+      const guardadas = JSON.parse(config.preguntas_frecuentes || 'null')
+      if (Array.isArray(guardadas) && guardadas.length) return guardadas
+    } catch {
+      // JSON dañado: se arranca desde las preguntas por defecto.
+    }
+    return PREGUNTAS_FRECUENTES.map((p) => ({ ...p }))
+  })
+  const [estado, correr] = useAccion()
+  const cambiar = (i, campo, v) => setLista((l) => l.map((p, j) => (j === i ? { ...p, [campo]: v } : p)))
+  const mover = (i, d) =>
+    setLista((l) => {
+      const n = [...l]
+      ;[n[i], n[i + d]] = [n[i + d], n[i]]
+      return n
+    })
+  return (
+    <form
+      className="admin-bloque admin-bloque-ancho"
+      onSubmit={(e) => {
+        e.preventDefault()
+        const limpias = lista.map((p) => ({ pregunta: p.pregunta.trim(), respuesta: p.respuesta.trim() })).filter((p) => p.pregunta && p.respuesta)
+        correr(() => ejecutar('guardarConfig', { config: { preguntas_frecuentes: JSON.stringify(limpias) } }, 'Preguntas frecuentes guardadas.'))
+      }}
+    >
+      <h2>Preguntas frecuentes</h2>
+      <p className="admin-sub">Se muestran en la página "Preguntas frecuentes", en este mismo orden.</p>
+      {lista.map((p, i) => (
+        <div key={i} className="admin-pregunta">
+          <div className="admin-pregunta-cabeza">
+            <strong>{i + 1}.</strong>
+            <button type="button" className="admin-enlace" disabled={i === 0} onClick={() => mover(i, -1)} aria-label="Subir pregunta">
+              ↑
+            </button>
+            <button type="button" className="admin-enlace" disabled={i === lista.length - 1} onClick={() => mover(i, 1)} aria-label="Bajar pregunta">
+              ↓
+            </button>
+            <button type="button" className="admin-quitar" onClick={() => setLista((l) => l.filter((_, j) => j !== i))} aria-label="Quitar pregunta">
+              ×
+            </button>
+          </div>
+          <input placeholder="Pregunta" value={p.pregunta} onChange={(e) => cambiar(i, 'pregunta', e.target.value)} />
+          <textarea rows={3} placeholder="Respuesta" value={p.respuesta} onChange={(e) => cambiar(i, 'respuesta', e.target.value)} />
+        </div>
+      ))}
+      <button type="button" className="admin-enlace" onClick={() => setLista((l) => [...l, { pregunta: '', respuesta: '' }])}>
+        + Agregar pregunta
+      </button>
+      {estado.error && <p className="error">{estado.error}</p>}
+      <button className="boton boton-primario" disabled={estado.ocupado}>
+        Guardar preguntas
       </button>
     </form>
   )

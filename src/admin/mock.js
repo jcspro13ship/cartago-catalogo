@@ -70,7 +70,7 @@ export async function atenderMock(p) {
     case 'ajustarStock': {
       const v = estado.variantes.find((x) => x.sku === p.sku)
       if (!v) return { ok: false, error: 'No existe la variante.' }
-      v.stock = Math.max(0, v.stock + Number(p.cambio))
+      v.stock = Math.max(0, (v.stock || 0) + Number(p.cambio))
       registrar(usuario, p.cambio < 0 ? 'Vendió / restó stock' : 'Sumó stock', `${p.sku} → ${v.stock}`)
       return { ok: true, stock: v.stock }
     }

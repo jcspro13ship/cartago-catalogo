@@ -34,7 +34,7 @@ export default function ProductosAdmin({ datos, ejecutar }) {
       if (categoria && p.categoria !== categoria) return false
       if (estadoFiltro === 'activos' && !p.activo) return false
       if (estadoFiltro === 'inactivos' && p.activo) return false
-      if (estadoFiltro === 'agotados' && stock(variantesPorProducto[p.id]) > 0) return false
+      if (estadoFiltro === 'agotados' && stock(variantesPorProducto[p.id]) !== 0) return false
       if (termino && !normalizar(`${p.id} ${p.nombre} ${p.marca} ${p.subcategoria}`).includes(termino)) return false
       return true
     })
@@ -124,11 +124,11 @@ export default function ProductosAdmin({ datos, ejecutar }) {
                 <div className="admin-fila-datos">
                   <span className="admin-precio">{p.precio > 0 ? formatoPrecio(p.precio) : 'A consultar'}</span>
                   <button
-                    className={`admin-stock ${total === 0 ? 'cero' : total <= 3 ? 'poco' : ''}`}
+                    className={`admin-stock ${total === null ? 'libre' : total === 0 ? 'cero' : total <= 3 ? 'poco' : ''}`}
                     onClick={() => setAbierto(abierto === p.id ? null : p.id)}
                     aria-expanded={abierto === p.id}
                   >
-                    Stock: {total} {abierto === p.id ? '▴' : '▾'}
+                    {total === null ? 'Disponible' : `Stock: ${total}`} {abierto === p.id ? '▴' : '▾'}
                   </button>
                 </div>
                 <button className="boton boton-secundario admin-editar" onClick={() => setEditando(p)}>
@@ -139,7 +139,15 @@ export default function ProductosAdmin({ datos, ejecutar }) {
               {abierto === p.id && (
                 <div className="admin-variantes">
                   {vars.length === 0 && <p className="admin-sub">Este producto no tiene colores. Agrégalos desde Editar.</p>}
-                  {vars.map((v) => (
+                  {vars.map((v) =>
+                    v.stock === null ? (
+                      <div key={v.sku} className="admin-variante">
+                        <span>
+                          {v.color || 'Único'} <small>{v.sku}</small>
+                        </span>
+                        <span className="admin-sub">Sin control: siempre disponible</span>
+                      </div>
+                    ) : (
                     <div key={v.sku} className="admin-variante">
                       <span>
                         {v.color || 'Único'} <small>{v.sku}</small>
@@ -158,8 +166,12 @@ export default function ProductosAdmin({ datos, ejecutar }) {
                         </button>
                       </div>
                     </div>
-                  ))}
-                  <p className="admin-sub">Usa − cuando vendas una unidad y + cuando llegue mercancía.</p>
+                    )
+                  )}
+                  <p className="admin-sub">
+                    Usa − cuando vendas una unidad y + cuando llegue mercancía. Los colores "sin control" se muestran
+                    siempre disponibles; para controlarlos, escribe la cantidad en Editar.
+                  </p>
                 </div>
               )}
             </article>
@@ -170,6 +182,12 @@ export default function ProductosAdmin({ datos, ejecutar }) {
   )
 }
 
+// null = algún color sin control de inventario (el producto se muestra disponible).
 function stock(variantes) {
-  return (variantes || []).reduce((acc, v) => acc + (Number(v.stock) || 0), 0)
+  let total = 0
+  for (const v of variantes || []) {
+    if (v.stock === null) return null
+    total += Number(v.stock) || 0
+  }
+  return total
 }

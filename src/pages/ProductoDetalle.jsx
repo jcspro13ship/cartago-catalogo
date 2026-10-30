@@ -1,16 +1,21 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { useCatalogo, variantesDe, stockTotal } from '../context/CatalogoContext'
+import { useCatalogo, variantesDe, stockTotal, hayStock } from '../context/CatalogoContext'
 import { useCart } from '../context/CartContext'
 import GaleriaProducto from '../components/GaleriaProducto'
 import LogoMarca from '../components/LogoMarca'
+import { rutaDeProducto, linkACamino } from '../utils/categorias'
 import ProductoCard from '../components/ProductoCard'
 import Icono, { IconoWhatsApp } from '../components/Icono'
 import { useMoneda } from '../context/MonedaContext'
 import { muestraColor } from '../utils/colores'
 import { linkWhatsApp } from '../utils/whatsapp'
 
+// Tope de unidades por pedido cuando el producto no lleva control de inventario.
+const MAX_SIN_CONTROL = 20
+
 function textoStock(stock) {
+  if (stock === null) return { texto: 'Disponible', clase: 'stock-ok' }
   if (stock <= 0) return { texto: 'Agotado en este color', clase: 'stock-agotado' }
   if (stock <= 3) return { texto: `¡Últimas ${stock === 1 ? 'unidad' : `${stock} unidades`}!`, clase: 'stock-pocas' }
   return { texto: 'Disponible', clase: 'stock-ok' }
@@ -33,7 +38,7 @@ export default function ProductoDetalle() {
 
   // Al entrar (o cambiar de producto) se preselecciona el primer color con stock.
   useEffect(() => {
-    const primera = variantes.find((v) => v.stock > 0) || variantes[0]
+    const primera = variantes.find(hayStock) || variantes[0]
     setSku(primera ? primera.sku : null)
     setCantidad(1)
     setPersonalizacion('')
@@ -81,11 +86,13 @@ export default function ProductoDetalle() {
 
   const variante = variantes.find((v) => v.sku === sku)
   const stock = variante ? variante.stock : 0
+  const puedePedir = variante ? hayStock(variante) : false
+  const tope = stock === null ? MAX_SIN_CONTROL : stock
   const agotadoTotal = stockTotal(todas, producto.id) === 0
   const estadoStock = textoStock(stock)
 
   function handleAgregar() {
-    if (!variante || stock <= 0) return
+    if (!variante || !puedePedir) return
     addItem({
       sku: variante.sku,
       productoId: producto.id,
@@ -111,18 +118,12 @@ export default function ProductoDetalle() {
         <nav className="migas" aria-label="Ruta">
           <Link to="/catalogo">Catálogo</Link>
           <span>/</span>
-          <Link to={`/catalogo?categoria=${encodeURIComponent(producto.categoria)}`}>{producto.categoria}</Link>
-          <span>/</span>
-          {producto.subcategoria && (
-            <>
-              <Link
-                to={`/catalogo?categoria=${encodeURIComponent(producto.categoria)}&sub=${encodeURIComponent(producto.subcategoria)}`}
-              >
-                {producto.subcategoria}
-              </Link>
+          {rutaDeProducto(producto).map((nombre, i, ruta) => (
+            <span key={nombre + i} className="migas-paso">
+              <Link to={linkACamino(ruta.slice(0, i + 1))}>{nombre}</Link>
               <span>/</span>
-            </>
-          )}
+            </span>
+          ))}
           <span aria-current="page">{producto.nombre}</span>
         </nav>
 
@@ -156,14 +157,14 @@ export default function ProductoDetalle() {
                     return (
                       <button
                         key={v.sku}
-                        className={`chip chip-color ${sku === v.sku ? 'chip-activo' : ''} ${v.stock <= 0 ? 'chip-agotado' : ''}`}
+                        className={`chip chip-color ${sku === v.sku ? 'chip-activo' : ''} ${!hayStock(v) ? 'chip-agotado' : ''}`}
                         onClick={() => {
                           setSku(v.sku)
                           setCantidad(1)
                           setAgregado(false)
                         }}
                         aria-pressed={sku === v.sku}
-                        title={v.stock <= 0 ? `${v.color} (agotado)` : v.color}
+                        title={!hayStock(v) ? `${v.color} (agotado)` : v.color}
                       >
                         {muestra && <span className="muestra" style={{ background: muestra }} />}
                         {v.color}
@@ -176,7 +177,7 @@ export default function ProductoDetalle() {
 
             {variante && <p className={`stock ${estadoStock.clase}`}>{estadoStock.texto}</p>}
 
-            {producto.personalizable && stock > 0 && (
+            {producto.personalizable && puedePedir && (
               <label className="selector personalizacion">
                 <span className="selector-label">
                   Personalización <em>(opcional)</em>
@@ -194,7 +195,7 @@ export default function ProductoDetalle() {
               </label>
             )}
 
-            {stock > 0 ? (
+            {puedePedir ? (
               <div className="producto-compra">
                 <div className="cantidad" aria-label="Cantidad">
                   <button onClick={() => setCantidad((c) => Math.max(1, c - 1))} aria-label="Restar uno" disabled={cantidad <= 1}>
@@ -202,9 +203,9 @@ export default function ProductoDetalle() {
                   </button>
                   <span>{cantidad}</span>
                   <button
-                    onClick={() => setCantidad((c) => Math.min(stock, c + 1))}
+                    onClick={() => setCantidad((c) => Math.min(tope, c + 1))}
                     aria-label="Sumar uno"
-                    disabled={cantidad >= stock}
+                    disabled={cantidad >= tope}
                   >
                     +
                   </button>

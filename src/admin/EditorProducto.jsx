@@ -1,10 +1,11 @@
 import { useMemo, useRef, useState } from 'react'
 import { CATEGORIAS } from '../config'
+import { hojasDe } from '../utils/categorias'
 import { conAncho } from '../utils/imagenUrl'
 import { subirFoto } from './fotos'
 
 // Letra con la que empiezan los códigos de cada categoría (m1, e4, j2…).
-const PREFIJOS = { Monturas: 'm', Equino: 'e', Jinete: 'j', 'Cuidado del caballo': 'c', Caninos: 'k' }
+const PREFIJOS = { Monturas: 'm', Accesorios: 'a', 'Cuidado del caballo': 'c', Caninos: 'k' }
 
 function siguienteId(categoria, productos) {
   const prefijo = PREFIJOS[categoria] || 'p'
@@ -57,7 +58,7 @@ export default function EditorProducto({ producto, variantes, productos, marcas,
   const nuevo = !producto
   const [form, setForm] = useState(() => ({ ...VACIO, ...(producto || {}), precio: producto?.precio || '', precio_usd: producto?.precio_usd || '' }))
   const [colores, setColores] = useState(() =>
-    variantes.length ? variantes.map((v) => ({ color: v.color, stock: v.stock })) : [{ color: '', stock: 0 }]
+    variantes.length ? variantes.map((v) => ({ color: v.color, stock: v.stock === null ? '' : v.stock })) : [{ color: '', stock: '' }]
   )
   const [fotos, setFotos] = useState(() => [...(producto?.imagenes || [])])
   const [subiendo, setSubiendo] = useState(0)
@@ -67,8 +68,7 @@ export default function EditorProducto({ producto, variantes, productos, marcas,
   const inputFotos = useRef(null)
 
   const subcategorias = useMemo(() => {
-    const ref = CATEGORIAS.find((c) => c.nombre === form.categoria)
-    return ref ? ref.subcategorias : []
+    return hojasDe(form.categoria)
   }, [form.categoria])
 
   function cambiar(campo, valor) {
@@ -122,8 +122,8 @@ export default function EditorProducto({ producto, variantes, productos, marcas,
     if (subiendo > 0) return setError('Espera a que terminen de subir las fotos.')
     // Filas con color; si ninguna tiene, el producto queda con una sola variante sin color.
     const conColor = colores.filter((c) => c.color.trim())
-    const filas = conColor.length ? conColor : [{ color: '', stock: colores[0] ? colores[0].stock : 0 }]
-    const variantesFinales = asignarSkus(form.id.trim(), filas).map((c) => ({ sku: c.sku, color: c.color.trim(), stock: Number(c.stock) || 0 }))
+    const filas = conColor.length ? conColor : [{ color: '', stock: colores[0] ? colores[0].stock : '' }]
+    const variantesFinales = asignarSkus(form.id.trim(), filas).map((c) => ({ sku: c.sku, color: c.color.trim(), stock: String(c.stock).trim() === '' ? '' : Number(c.stock) || 0 }))
     setGuardando(true)
     try {
       await ejecutar(
@@ -188,8 +188,10 @@ export default function EditorProducto({ producto, variantes, productos, marcas,
               <span>Subcategoría</span>
               <select value={form.subcategoria} onChange={(e) => cambiar('subcategoria', e.target.value)} disabled={!subcategorias.length}>
                 <option value="">—</option>
-                {subcategorias.map((s) => (
-                  <option key={s}>{s}</option>
+                {subcategorias.map((h) => (
+                  <option key={h.etiqueta} value={h.nombre}>
+                    {h.etiqueta}
+                  </option>
                 ))}
               </select>
             </label>
@@ -240,13 +242,14 @@ export default function EditorProducto({ producto, variantes, productos, marcas,
           {colores.map((c, i) => (
             <div key={i} className="admin-color-fila">
               <input placeholder={colores.length === 1 ? 'Color (vacío si no maneja colores)' : 'Color'} value={c.color} onChange={(e) => cambiarColor(i, 'color', e.target.value)} />
-              <input type="number" min="0" inputMode="numeric" value={c.stock} onChange={(e) => cambiarColor(i, 'stock', e.target.value)} aria-label="Unidades" />
+              <input type="number" min="0" inputMode="numeric" value={c.stock} placeholder="Sin control" onChange={(e) => cambiarColor(i, 'stock', e.target.value)} aria-label="Unidades" />
               <button type="button" className="admin-quitar" onClick={() => setColores((cs) => cs.filter((_, j) => j !== i))} disabled={colores.length === 1} aria-label="Quitar color">
                 ×
               </button>
             </div>
           ))}
-          <button type="button" className="admin-enlace" onClick={() => setColores((cs) => [...cs, { color: '', stock: 0 }])}>
+          <p className="admin-sub">Cantidad vacía = sin control de inventario (siempre disponible).</p>
+          <button type="button" className="admin-enlace" onClick={() => setColores((cs) => [...cs, { color: '', stock: '' }])}>
             + Agregar color
           </button>
         </div>

@@ -7,7 +7,8 @@ import Icono, { IconoWhatsApp } from '../components/Icono'
 import { linkWhatsApp } from '../utils/whatsapp'
 import { EMPRESA, MARCAS } from '../config'
 import LogoMarca from '../components/LogoMarca'
-import { ordenarCategorias, infoCategoria } from '../utils/categorias'
+import VideoSeccion from '../components/VideoSeccion'
+import { VITRINA, linkACamino, rutaDeProducto, estaEnRuta, nodoEn } from '../utils/categorias'
 
 const BASE = import.meta.env.BASE_URL
 
@@ -35,23 +36,21 @@ const PILARES = [
 ]
 
 export default function Inicio() {
-  const { productos, variantes, cargando } = useCatalogo()
+  const { productos, variantes, cargando, config } = useCatalogo()
 
   const activos = useMemo(() => productos.filter((p) => p.activo), [productos])
 
   // Una tarjeta por categoría, con la foto del primer producto que tenga foto.
+  // Un acceso por grupo de la vitrina (Monturas, Para el caballo…), con la
+  // foto de un producto destacado del grupo si lo hay.
   const categorias = useMemo(() => {
-    const mapa = new Map()
-    activos.forEach((p) => {
-      const actual = mapa.get(p.categoria)
-      if (!actual) mapa.set(p.categoria, { nombre: p.categoria, portada: p, cantidad: 1 })
-      else {
-        actual.cantidad += 1
-        if (actual.portada.imagenes.length === 0 && p.imagenes.length > 0) actual.portada = p
-      }
-    })
-    const orden = ordenarCategorias([...mapa.keys()])
-    return orden.map((nombre) => mapa.get(nombre))
+    const conRuta = activos.map((p) => ({ ...p, _ruta: rutaDeProducto(p) }))
+    return VITRINA.map((v) => {
+      const del = conRuta.filter((p) => estaEnRuta(p, v.camino))
+      const conFoto = del.filter((p) => p.imagenes.length > 0)
+      const portada = conFoto.find((p) => p.destacado) || conFoto[0] || del[0]
+      return { ...v, cantidad: del.length, portada, descripcion: nodoEn(v.camino)?.descripcion }
+    }).filter((c) => c.cantidad > 0)
   }, [activos])
 
   // Marcas en el orden de config; solo las que tienen productos, más las
@@ -126,11 +125,11 @@ export default function Inicio() {
           </div>
           <div className="categorias-grid">
             {categorias.map((c) => (
-              <Link key={c.nombre} to={`/catalogo?categoria=${encodeURIComponent(c.nombre)}`} className="categoria-card">
+              <Link key={c.titulo} to={linkACamino(c.camino)} className="categoria-card">
                 <ImagenProducto producto={c.portada} className="categoria-card-imagen" sizes="(max-width: 640px) 50vw, 280px" />
                 <div className="categoria-card-texto">
-                  <h3>{c.nombre}</h3>
-                  {infoCategoria(c.nombre) && <p>{infoCategoria(c.nombre).descripcion}</p>}
+                  <h3>{c.titulo}</h3>
+                  {c.descripcion && <p>{c.descripcion}</p>}
                   <span>
                     {c.cantidad} {c.cantidad === 1 ? 'producto' : 'productos'}
                   </span>
@@ -153,6 +152,12 @@ export default function Inicio() {
           </span>
         </Link>
       </section>
+
+      {config.videos?.inicio && (
+        <section className="seccion contenedor">
+          <VideoSeccion url={config.videos.inicio} titulo="Talabartería Cartago" />
+        </section>
+      )}
 
       {(cargando || destacados.length > 0) && (
         <section className="seccion seccion-tono">

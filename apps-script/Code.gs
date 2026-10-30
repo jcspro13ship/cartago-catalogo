@@ -12,7 +12,7 @@
 //
 // Paso a paso de instalación: docs/INSTRUCTIVO_TECNICO.md (en el repositorio del sitio)
 
-var VERSION = 2
+var VERSION = 3
 
 var ESTRUCTURA = {
   Productos: [
@@ -27,12 +27,19 @@ var ESTRUCTURA = {
   Historial: ['fecha', 'usuario', 'accion', 'detalle'],
 }
 
+// Categoría → subcategorías finales (la tienda deduce el camino completo,
+// p. ej. Accesorios › Caballo › Cabeza › Aperos). Solo se usa para llenar
+// la pestaña Listas.
 var CATEGORIAS = {
-  Monturas: ['Sillas', 'Tereques', 'Galápagos', 'Kids'],
-  Equino: ['Cabeza', 'Alfombras', 'Alforjas', 'Correaje', 'Tarabas'],
-  Jinete: ['Sombreros', 'Marroquinería', 'Bisutería'],
-  'Cuidado del caballo': ['Aseo', 'Suplementos', 'Accesorios'],
-  Caninos: ['Pecheras', 'Collares', 'Traíllas', 'Bozales'],
+  Monturas: ['Sillas', 'Tereques', 'Galápagos', 'Kids', 'Maletas para silla'],
+  Accesorios: [
+    'Aperos', 'Jáquimas', 'Riendas', 'Frenos', 'Alfombras', 'Pellones', 'Alforjas',
+    'Pecheras', 'Cinchas', 'Grupas', 'Arretrancos', 'Rejos y chipas',
+    'Guardabarros', 'Arciones', 'Tarabas y estribos', 'Espuelas',
+    'Sombreros', 'Marroquinería', 'Bisutería',
+  ],
+  'Cuidado del caballo': [''],
+  Caninos: ['Bozales', 'Collares', 'Pecheras', 'Traíllas', 'Brazaletes'],
 }
 var MARCAS = ['Cartago', 'San Fermín', 'Mesacé', 'Al Torno', 'Sybec', 'Natural V.', 'Cheval']
 
@@ -96,7 +103,8 @@ function leerCatalogo_() {
       producto_id: String(v.producto_id),
       sku: String(v.sku),
       color: String(v.color || ''),
-      stock: Number(v.stock) || 0,
+      // Stock vacío = sin control de inventario: la tienda lo muestra disponible.
+      stock: v.stock === '' || v.stock === null ? null : Number(v.stock) || 0,
     }
   })
 
@@ -237,7 +245,7 @@ function guardarProducto_(p, variantes, imagenes, nuevo, usuario) {
       var sku = String(v.sku || id).trim()
       if (skus[sku]) throw new Error('El código ' + sku + ' está repetido en los colores.')
       skus[sku] = true
-      return { producto_id: id, sku: sku, color: String(v.color || '').trim(), stock: Math.max(0, Math.floor(Number(v.stock) || 0)) }
+      return { producto_id: id, sku: sku, color: String(v.color || '').trim(), stock: v.stock === '' || v.stock === null || v.stock === undefined ? '' : Math.max(0, Math.floor(Number(v.stock) || 0)) }
     })
     reemplazarHijos_('Variantes', id, filasVariantes)
   }

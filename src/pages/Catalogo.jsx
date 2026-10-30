@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { useCatalogo, stockTotal } from '../context/CatalogoContext'
+import { useCatalogo, stockTotal, disponible } from '../context/CatalogoContext'
 import ProductoCard from '../components/ProductoCard'
 import Icono from '../components/Icono'
 import { normalizar } from '../utils/formato'
 import { linkWhatsApp } from '../utils/whatsapp'
-import { ordenarCategorias, ordenarSubcategorias, infoCategoria } from '../utils/categorias'
+import { ordenarCategorias, ordenarHijos, nodoEn, rutaDeProducto, estaEnRuta } from '../utils/categorias'
+import { Link } from 'react-router-dom'
 
 const TAMANO_PAGINA = 24
 const TODAS = 'Todas'
@@ -21,7 +22,16 @@ export default function Catalogo() {
   const { productos, variantes, cargando } = useCatalogo()
   const [params, setParams] = useSearchParams()
   const categoria = params.get('categoria') || TODAS
-  const subcategoria = params.get('sub') || TODAS
+  // Camino dentro de la categoría, ej. ?categoria=Accesorios&ruta=Caballo/Cabeza.
+  // Los links viejos con ?sub=Aperos se convierten al camino completo.
+  const rutaParam = params.get('ruta')
+  const subLegacy = params.get('sub')
+  const camino = useMemo(() => {
+    if (categoria === TODAS) return []
+    if (rutaParam) return [categoria, ...rutaParam.split('/').filter(Boolean)]
+    if (subLegacy) return rutaDeProducto({ categoria, subcategoria: subLegacy })
+    return [categoria]
+  }, [categoria, rutaParam, subLegacy])
   const marca = params.get('marca') || TODAS
   const soloPersonalizables = params.get('personalizable') === '1'
   const busqueda = params.get('q') || ''
@@ -35,12 +45,29 @@ export default function Catalogo() {
     const nuevos = new URLSearchParams(params)
     if (!valor || valor === TODAS) nuevos.delete(clave)
     else nuevos.set(clave, valor)
-    // Al cambiar de categoría, la subcategoría anterior ya no aplica.
-    if (clave === 'categoria') nuevos.delete('sub')
+    // Al cambiar de categoría, el camino anterior ya no aplica.
+    if (clave === 'categoria') {
+      nuevos.delete('ruta')
+      nuevos.delete('sub')
+    }
     setParams(nuevos, { replace: true })
   }
 
-  const activos = useMemo(() => productos.filter((p) => p.activo), [productos])
+  function irA(nuevoCamino) {
+    const nuevos = new URLSearchParams(params)
+    nuevos.delete('sub')
+    if (nuevoCamino.length === 0) nuevos.delete('categoria')
+    else nuevos.set('categoria', nuevoCamino[0])
+    if (nuevoCamino.length > 1) nuevos.set('ruta', nuevoCamino.slice(1).join('/'))
+    else nuevos.delete('ruta')
+    setParams(nuevos, { replace: true })
+  }
+
+  // Cada producto con su camino completo en el árbol de categorías.
+  const activos = useMemo(
+    () => productos.filter((p) => p.activo).map((p) => ({ ...p, _ruta: rutaDeProducto(p) })),
+    [productos]
+  )
 
   const stockPorProducto = useMemo(() => {
     const mapa = {}
@@ -55,11 +82,25 @@ export default function Catalogo() {
     [activos]
   )
 
-  const subcategorias = useMemo(() => {
-    if (categoria === TODAS) return []
-    const subs = new Set(activos.filter((p) => p.categoria === categoria).map((p) => p.subcategoria).filter(Boolean))
-    return subs.size > 1 ? [TODAS, ...ordenarSubcategorias(categoria, [...subs])] : []
-  }, [activos, categoria])
+  // Segunda fila de chips: los hijos del nivel actual (o los hermanos, si ya
+  // se llegó a la última subcategoría), solo los que tienen productos.
+  const subnivel = useMemo(() => {
+    if (camino.length === 0) return null
+    const hijosCon = (base) => {
+      const nombres = new Set(
+        activos.filter((p) => estaEnRuta(p, base) && p._ruta.length > base.length).map((p) => p._ruta[base.length])
+      )
+      return ordenarHijos(base, [...nombres])
+    }
+    let base = camino
+    let opciones = hijosCon(base)
+    if (opciones.length === 0 && camino.length > 1) {
+      base = camino.slice(0, -1)
+      opciones = hijosCon(base)
+    }
+    if (opciones.length < 2 && base === camino) return null
+    return { base, opciones, activa: camino[base.length] || null }
+  }, [activos, camino])
 
   const marcas = useMemo(
     () => [...new Set(activos.map((p) => p.marca).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es')),
@@ -69,11 +110,10 @@ export default function Catalogo() {
   const productosFiltrados = useMemo(() => {
     const termino = normalizar(busqueda.trim())
     const lista = activos.filter((p) => {
-      if (categoria !== TODAS && p.categoria !== categoria) return false
-      if (subcategoria !== TODAS && p.subcategoria !== subcategoria) return false
+      if (camino.length && !estaEnRuta(p, camino)) return false
       if (marca !== TODAS && normalizar(p.marca) !== normalizar(marca)) return false
       if (soloPersonalizables && !p.personalizable) return false
-      if (soloDisponibles && !(stockPorProducto[p.id] > 0)) return false
+      if (soloDisponibles && !disponible(stockPorProducto[p.id])) return false
       if (termino) {
         const texto = normalizar(`${p.nombre} ${p.categoria} ${p.subcategoria} ${p.marca} ${p.descripcion}`)
         if (!termino.split(/\s+/).every((t) => texto.includes(t))) return false
@@ -97,16 +137,16 @@ export default function Catalogo() {
       // Destacados primero y los agotados al final, sin alterar el orden del Sheet entre iguales.
       lista.sort(
         (a, b) =>
-          (stockPorProducto[a.id] > 0 ? 0 : 1) - (stockPorProducto[b.id] > 0 ? 0 : 1) ||
+          (disponible(stockPorProducto[a.id]) ? 0 : 1) - (disponible(stockPorProducto[b.id]) ? 0 : 1) ||
           (b.destacado ? 1 : 0) - (a.destacado ? 1 : 0)
       )
     }
     return lista
-  }, [activos, categoria, subcategoria, marca, soloPersonalizables, busqueda, soloDisponibles, orden, stockPorProducto])
+  }, [activos, camino, marca, soloPersonalizables, busqueda, soloDisponibles, orden, stockPorProducto])
 
   useEffect(() => {
     setVisibles(TAMANO_PAGINA)
-  }, [categoria, subcategoria, marca, soloPersonalizables, busqueda, soloDisponibles, orden])
+  }, [camino, marca, soloPersonalizables, busqueda, soloDisponibles, orden])
 
   const productosVisibles = productosFiltrados.slice(0, visibles)
   const hayMas = visibles < productosFiltrados.length
@@ -115,19 +155,31 @@ export default function Catalogo() {
     <div className="pagina-catalogo">
       <section className="catalogo-cabecera">
         <div className="contenedor">
-          <p className="sobretitulo">{soloPersonalizables ? 'Hazlo único' : marca !== TODAS ? `Marca ${marca}` : 'Catálogo'}</p>
+          <nav className="migas catalogo-migas" aria-label="Ruta">
+            <Link to="/catalogo">Catálogo</Link>
+            {camino.map((nombre, i) => (
+              <span key={nombre + i}>
+                <span aria-hidden="true">›</span>
+                {i < camino.length - 1 ? (
+                  <button type="button" onClick={() => irA(camino.slice(0, i + 1))}>
+                    {nombre}
+                  </button>
+                ) : (
+                  <strong>{nombre}</strong>
+                )}
+              </span>
+            ))}
+          </nav>
           <h1>
             {soloPersonalizables
-              ? 'Productos que personalizamos para ti'
-              : categoria === TODAS
-                ? 'Todos nuestros productos'
-                : subcategoria !== TODAS
-                  ? `${categoria} · ${subcategoria}`
-                  : categoria}
+              ? 'Productos personalizados'
+              : marca !== TODAS && camino.length === 0
+                ? `Marca ${marca}`
+                : camino.length
+                  ? camino[camino.length - 1]
+                  : 'Todos nuestros productos'}
           </h1>
-          {categoria !== TODAS && infoCategoria(categoria) && (
-            <p className="catalogo-descripcion">{infoCategoria(categoria).descripcion}</p>
-          )}
+          {camino.length > 0 && nodoEn(camino)?.descripcion && <p className="catalogo-descripcion">{nodoEn(camino).descripcion}</p>}
         </div>
       </section>
 
@@ -162,19 +214,25 @@ export default function Catalogo() {
               className={`chip chip-especial ${soloPersonalizables ? 'chip-activo' : ''}`}
               onClick={() => cambiarParam('personalizable', soloPersonalizables ? '' : '1')}
             >
-              Hazlo único
+              ★ Personalizados
             </button>
           </div>
 
-          {subcategorias.length > 0 && (
+          {subnivel && (
             <div className="catalogo-chips catalogo-subchips" aria-label="Subcategorías">
-              {subcategorias.map((s) => (
+              <button
+                className={`chip chip-sub ${!subnivel.activa ? 'chip-activo' : ''}`}
+                onClick={() => irA(subnivel.base)}
+              >
+                Ver todo
+              </button>
+              {subnivel.opciones.map((nombre) => (
                 <button
-                  key={s}
-                  className={`chip chip-sub ${subcategoria === s ? 'chip-activo' : ''}`}
-                  onClick={() => cambiarParam('sub', s)}
+                  key={nombre}
+                  className={`chip chip-sub ${subnivel.activa === nombre ? 'chip-activo' : ''}`}
+                  onClick={() => irA([...subnivel.base, nombre])}
                 >
-                  {s === TODAS ? 'Todas' : s}
+                  {nombre}
                 </button>
               ))}
             </div>

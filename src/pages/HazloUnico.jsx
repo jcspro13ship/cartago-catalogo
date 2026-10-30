@@ -4,6 +4,7 @@ import { useCatalogo, stockTotal } from '../context/CatalogoContext'
 import ProductoCard from '../components/ProductoCard'
 import Icono, { IconoWhatsApp } from '../components/Icono'
 import { linkWhatsApp } from '../utils/whatsapp'
+import VideoSeccion from '../components/VideoSeccion'
 
 const OPCIONES = [
   {
@@ -25,7 +26,7 @@ const OPCIONES = [
 ]
 
 export default function HazloUnico() {
-  const { productos, variantes, cargando } = useCatalogo()
+  const { productos, variantes, cargando, config } = useCatalogo()
   const personalizables = useMemo(() => productos.filter((p) => p.activo && p.personalizable), [productos])
 
   return (
@@ -40,6 +41,18 @@ export default function HazloUnico() {
           </p>
         </div>
       </section>
+
+      {config.videos?.personalizacion && (
+        <section className="seccion contenedor">
+          <div className="seccion-encabezado">
+            <div>
+              <p className="sobretitulo">Así trabajamos</p>
+              <h2>Mira cómo hacemos tu pieza</h2>
+            </div>
+          </div>
+          <VideoSeccion url={config.videos.personalizacion} titulo="Así personalizamos en Talabartería Cartago" />
+        </section>
+      )}
 
       <section className="seccion contenedor">
         <div className="valores-grid">

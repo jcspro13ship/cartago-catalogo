@@ -32,35 +32,50 @@ export const TASA_USD_EJEMPLO = 3000
 // contraentrega (Dropi).
 export const TOPE_CONTRAENTREGA = 1000000
 
-// Orden y descripción de las categorías del menú. Los productos se clasifican
-// en el Sheet con estas mismas palabras (columnas categoria y subcategoria).
-// Si en el Sheet aparece una categoría que no está aquí, el sitio la muestra
-// igual, al final.
+// Árbol de categorías del menú y del catálogo (ver docs/CATEGORIAS.md).
+// En el Sheet cada producto lleva solo dos datos: "categoria" (el primer
+// nivel: Monturas, Accesorios…) y "subcategoria" (el último nivel: Aperos,
+// Pecheras…). El camino completo (Accesorios › Caballo › Cabeza › Aperos) se
+// deduce de este árbol. Una categoría que aparezca en el Sheet y no esté aquí
+// se muestra igual, al final.
+const hojas = (...nombres) => nombres.map((nombre) => ({ nombre }))
+
 export const CATEGORIAS = [
   {
     nombre: 'Monturas',
     descripcion: 'Sillas, tereques, galápagos y monturas para niños',
-    subcategorias: ['Sillas', 'Tereques', 'Galápagos', 'Kids'],
+    hijos: hojas('Sillas', 'Tereques', 'Galápagos', 'Kids', 'Maletas para silla'),
   },
   {
-    nombre: 'Equino',
-    descripcion: 'Aperos, frenos, pellones, alforjas, correaje y tarabas',
-    subcategorias: ['Cabeza', 'Alfombras', 'Alforjas', 'Correaje', 'Tarabas'],
-  },
-  {
-    nombre: 'Jinete',
-    descripcion: 'Sombreros, marroquinería y bisutería',
-    subcategorias: ['Sombreros', 'Marroquinería', 'Bisutería'],
+    nombre: 'Accesorios',
+    descripcion: 'Todo para el caballo y el jinete',
+    hijos: [
+      {
+        nombre: 'Caballo',
+        descripcion: 'Cabeza, lomo, correaje y colgantes',
+        hijos: [
+          { nombre: 'Cabeza', hijos: hojas('Aperos', 'Jáquimas', 'Riendas', 'Frenos') },
+          { nombre: 'Lomo', hijos: hojas('Alfombras', 'Pellones', 'Alforjas') },
+          { nombre: 'Correaje', hijos: hojas('Pecheras', 'Cinchas', 'Grupas', 'Arretrancos', 'Rejos y chipas') },
+          { nombre: 'Colgantes', hijos: hojas('Guardabarros', 'Arciones', 'Tarabas y estribos', 'Espuelas') },
+        ],
+      },
+      {
+        nombre: 'Jinete',
+        descripcion: 'Sombreros, marroquinería y bisutería',
+        hijos: hojas('Sombreros', 'Marroquinería', 'Bisutería'),
+      },
+    ],
   },
   {
     nombre: 'Cuidado del caballo',
-    descripcion: 'Aseo, suplementos y accesorios',
-    subcategorias: ['Aseo', 'Suplementos', 'Accesorios'],
+    descripcion: 'Aseo, herraje y protección',
+    hijos: [],
   },
   {
     nombre: 'Caninos',
-    descripcion: 'Pecheras, collares, traíllas y bozales',
-    subcategorias: ['Pecheras', 'Collares', 'Traíllas', 'Bozales'],
+    descripcion: 'Bozales, collares, pecheras y traíllas',
+    hijos: hojas('Bozales', 'Collares', 'Pecheras', 'Traíllas', 'Brazaletes'),
   },
 ]
 

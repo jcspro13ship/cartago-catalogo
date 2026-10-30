@@ -33,7 +33,8 @@ function normalizarVariantes(variantes) {
     producto_id: String(v.producto_id),
     sku: String(v.sku),
     color: v.color ? String(v.color).trim() : '',
-    stock: Number(v.stock) || 0,
+    // Stock vacío en el Sheet = sin control de inventario: siempre disponible.
+    stock: v.stock === '' || v.stock === null || v.stock === undefined ? null : Number(v.stock) || 0,
   }))
 }
 
@@ -44,7 +45,20 @@ function normalizarConfig(config, marcas) {
   ;(Array.isArray(marcas) ? marcas : []).forEach((m) => {
     if (m && m.marca && m.logo) logos[String(m.marca).trim()] = String(m.logo)
   })
-  return { tasaUsd: tasa > 0 ? tasa : TASA_USD_EJEMPLO, logosMarcas: logos }
+  let preguntas = null
+  try {
+    const lista = JSON.parse((config && config.preguntas_frecuentes) || 'null')
+    if (Array.isArray(lista)) preguntas = lista.filter((p) => p && p.pregunta && p.respuesta)
+  } catch {
+    // Si el JSON quedó mal escrito se usan las preguntas por defecto.
+  }
+  const texto = (clave) => String((config && config[clave]) || '').trim()
+  return {
+    tasaUsd: tasa > 0 ? tasa : TASA_USD_EJEMPLO,
+    logosMarcas: logos,
+    preguntas,
+    videos: { personalizacion: texto('video_personalizacion'), inicio: texto('video_inicio') },
+  }
 }
 
 function datosEjemplo() {

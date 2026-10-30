@@ -1,17 +1,35 @@
 import { useEffect, useState } from 'react'
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useCart } from '../context/CartContext'
 import { useMoneda } from '../context/MonedaContext'
-import { EMPRESA, TRANSPORTADORAS } from '../config'
+import { CATEGORIAS, EMPRESA, TRANSPORTADORAS } from '../config'
+import { linkACamino } from '../utils/categorias'
 import { linkWhatsApp } from '../utils/whatsapp'
 import Icono, { IconoWhatsApp } from './Icono'
 
 const BASE = import.meta.env.BASE_URL
 
+const ANUNCIOS = [
+  'Envíos a todo Colombia y al exterior',
+  'Pago contraentrega con Dropi',
+  'Piezas personalizadas hechas a mano',
+  'Más de 30 años en el gremio equino',
+  'Asesoría por WhatsApp: 315 002 2233',
+]
+
 export default function Layout() {
   const { cantidadTotal } = useCart()
   const { pathname } = useLocation()
   const [menuAbierto, setMenuAbierto] = useState(false)
+  const [termino, setTermino] = useState('')
+  const navigate = useNavigate()
+
+  function buscar(e) {
+    e.preventDefault()
+    const q = termino.trim()
+    navigate(q ? `/catalogo?q=${encodeURIComponent(q)}` : '/catalogo')
+    setTermino('')
+  }
 
   // Al cambiar de página: arriba del todo y menú del celular cerrado.
   useEffect(() => {
@@ -24,6 +42,19 @@ export default function Layout() {
       <a href="#contenido" className="saltar">
         Saltar al contenido
       </a>
+      <div className="anuncios" aria-label="Avisos">
+        <div className="anuncios-pista">
+          {[0, 1].map((copia) => (
+            <span key={copia} aria-hidden={copia === 1}>
+              {ANUNCIOS.map((t) => (
+                <span key={t} className="anuncio">
+                  {t}
+                </span>
+              ))}
+            </span>
+          ))}
+        </div>
+      </div>
       <header className="header">
         <div className="contenedor header-interior">
           <button
@@ -39,17 +70,16 @@ export default function Layout() {
             <img src={`${BASE}logo-cartago.png`} alt="Talabartería Cartago" width="300" height="151" />
           </Link>
 
-          <nav className={`header-nav ${menuAbierto ? 'abierto' : ''}`} aria-label="Principal">
-            <NavLink to="/" end>
-              Inicio
-            </NavLink>
-            <NavLink to="/catalogo">Catálogo</NavLink>
-            <NavLink to="/hazlo-unico">Hazlo único</NavLink>
-            <NavLink to="/nosotros">Nosotros</NavLink>
-            <a href={linkWhatsApp('Hola, quisiera recibir asesoría de Talabartería Cartago.')} target="_blank" rel="noopener noreferrer">
-              Contacto
-            </a>
-          </nav>
+          <form className="header-buscar" role="search" onSubmit={buscar}>
+            <Icono nombre="buscar" tamano={18} />
+            <input
+              type="search"
+              placeholder="Buscar sillas, aperos, sombreros…"
+              aria-label="Buscar en el catálogo"
+              value={termino}
+              onChange={(e) => setTermino(e.target.value)}
+            />
+          </form>
 
           <SelectorMoneda />
 
@@ -58,6 +88,8 @@ export default function Layout() {
             {cantidadTotal > 0 && <span className="header-carrito-cuenta">{cantidadTotal}</span>}
           </Link>
         </div>
+
+        <MenuPrincipal abierto={menuAbierto} />
       </header>
 
       <main id="contenido">
@@ -78,6 +110,96 @@ export default function Layout() {
         </a>
       )}
     </div>
+  )
+}
+
+// Menú principal armado desde el árbol de categorías. En computador cada
+// categoría abre su desplegable al pasar el mouse; en el celular, con la flecha.
+function MenuPrincipal({ abierto }) {
+  const [desplegado, setDesplegado] = useState(null)
+  const alternar = (nombre) => setDesplegado((d) => (d === nombre ? null : nombre))
+
+  return (
+    <nav className={`menu ${abierto ? 'abierto' : ''}`} aria-label="Principal">
+      <div className="contenedor menu-interior">
+        {CATEGORIAS.map((cat) => {
+          const tieneSub = cat.hijos && cat.hijos.length > 0
+          const esMega = tieneSub && cat.hijos.some((h) => h.hijos && h.hijos.length)
+          return (
+            <div key={cat.nombre} className={`menu-item ${tieneSub ? 'con-sub' : ''} ${desplegado === cat.nombre ? 'desplegado' : ''}`}>
+              <NavLink to={linkACamino([cat.nombre])} className="menu-enlace">
+                {cat.nombre}
+              </NavLink>
+              {tieneSub && (
+                <button
+                  type="button"
+                  className="menu-flecha"
+                  aria-label={`Ver subcategorías de ${cat.nombre}`}
+                  aria-expanded={desplegado === cat.nombre}
+                  onClick={() => alternar(cat.nombre)}
+                >
+                  <Icono nombre="flecha-abajo" tamano={14} />
+                </button>
+              )}
+              {tieneSub && (
+                <div className={`submenu ${esMega ? 'submenu-mega' : ''}`}>
+                  {esMega ? (
+                    cat.hijos.map((grupo) => (
+                      <div key={grupo.nombre} className="submenu-columna">
+                        <Link to={linkACamino([cat.nombre, grupo.nombre])} className="submenu-titulo">
+                          {grupo.nombre === 'Caballo' ? 'Para el caballo' : grupo.nombre === 'Jinete' ? 'Para el jinete' : grupo.nombre}
+                        </Link>
+                        {(grupo.hijos || []).map((sub) =>
+                          sub.hijos && sub.hijos.length ? (
+                            <div key={sub.nombre} className="submenu-grupo">
+                              <Link to={linkACamino([cat.nombre, grupo.nombre, sub.nombre])} className="submenu-subtitulo">
+                                {sub.nombre}
+                              </Link>
+                              {sub.hijos.map((hoja) => (
+                                <Link key={hoja.nombre} to={linkACamino([cat.nombre, grupo.nombre, sub.nombre, hoja.nombre])}>
+                                  {hoja.nombre}
+                                </Link>
+                              ))}
+                            </div>
+                          ) : (
+                            <Link key={sub.nombre} to={linkACamino([cat.nombre, grupo.nombre, sub.nombre])}>
+                              {sub.nombre}
+                            </Link>
+                          )
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="submenu-columna">
+                      {cat.hijos.map((hoja) => (
+                        <Link key={hoja.nombre} to={linkACamino([cat.nombre, hoja.nombre])}>
+                          {hoja.nombre}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })}
+        <div className="menu-item">
+          <NavLink to="/hazlo-unico" className="menu-enlace menu-personalizados">
+            ★ Personalizados
+          </NavLink>
+        </div>
+        <div className="menu-item menu-secundario menu-empuje">
+          <NavLink to="/nosotros" className="menu-enlace">
+            Nosotros
+          </NavLink>
+        </div>
+        <div className="menu-item menu-secundario">
+          <NavLink to="/preguntas-frecuentes" className="menu-enlace">
+            Preguntas frecuentes
+          </NavLink>
+        </div>
+      </div>
+    </nav>
   )
 }
 
@@ -109,8 +231,9 @@ function Footer() {
           <h4>Explora</h4>
           <ul>
             <li><Link to="/catalogo">Catálogo completo</Link></li>
-            <li><Link to="/hazlo-unico">Hazlo único</Link></li>
+            <li><Link to="/hazlo-unico">Personalizados</Link></li>
             <li><Link to="/nosotros">Nuestra historia</Link></li>
+            <li><Link to="/preguntas-frecuentes">Preguntas frecuentes</Link></li>
             <li><Link to="/carrito">Mi pedido</Link></li>
           </ul>
         </div>
