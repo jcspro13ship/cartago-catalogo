@@ -301,6 +301,9 @@ function Footer() {
       </div>
       <div className="contenedor footer-legal">
         <span>© {anio} {EMPRESA.razonSocial}</span>
+        <Link to="/admin" className="footer-admin">
+          <Icono nombre="candado" tamano={14} /> Acceso administrativo
+        </Link>
         <span>
           Desarrollado por <strong>JCS Consultoría Developments</strong>
         </span>

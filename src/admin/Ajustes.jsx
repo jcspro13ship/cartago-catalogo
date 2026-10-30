@@ -1,11 +1,8 @@
 import { useState } from 'react'
 import { formatoPrecio } from '../utils/formato'
-import { llamar } from './api'
-import { productos as productosEjemplo } from '../data/productos'
-import { variantes as variantesEjemplo } from '../data/variantes'
 import { PREGUNTAS_FRECUENTES } from '../data/preguntas'
 
-export default function Ajustes({ datos, usuarios, sesion, ejecutar, recargar }) {
+export default function Ajustes({ datos, usuarios, sesion, ejecutar }) {
   return (
     <section>
       <div className="admin-barra">
@@ -21,7 +18,6 @@ export default function Ajustes({ datos, usuarios, sesion, ejecutar, recargar })
         <Marcas marcas={datos.marcas} ejecutar={ejecutar} />
         <Usuarios usuarios={usuarios} ejecutar={ejecutar} />
         <MiClave sesion={sesion} ejecutar={ejecutar} />
-        <Demostracion productos={datos.productos} recargar={recargar} />
       </div>
     </section>
   )
@@ -278,76 +274,5 @@ function MiClave({ sesion, ejecutar }) {
         Cambiar contraseña
       </button>
     </form>
-  )
-}
-
-// Productos de muestra para enseñar la tienda antes de cargar el catálogo
-// real. Llevan el código "demo-…" para poder quitarlos todos de una vez sin
-// tocar los productos reales.
-const PREFIJO_DEMO = 'demo-'
-
-function Demostracion({ productos, recargar }) {
-  const [progreso, setProgreso] = useState('')
-  const [error, setError] = useState('')
-  const demos = productos.filter((p) => String(p.id).startsWith(PREFIJO_DEMO))
-
-  async function cargar() {
-    setError('')
-    try {
-      for (let i = 0; i < productosEjemplo.length; i++) {
-        const p = productosEjemplo[i]
-        const id = PREFIJO_DEMO + p.id
-        if (productos.some((x) => x.id === id)) continue
-        setProgreso(`Cargando ${i + 1} de ${productosEjemplo.length}: ${p.nombre}`)
-        await llamar('guardarProducto', {
-          nuevo: true,
-          producto: { ...p, id },
-          variantes: variantesEjemplo
-            .filter((v) => v.producto_id === p.id)
-            .map((v) => ({ sku: PREFIJO_DEMO + v.sku, color: v.color, stock: v.stock })),
-          imagenes: [],
-        })
-      }
-    } catch (err) {
-      setError(err.message)
-    }
-    setProgreso('')
-    await recargar()
-  }
-
-  async function quitar() {
-    if (!window.confirm(`¿Quitar los ${demos.length} productos de demostración? Los productos reales no se tocan.`)) return
-    setError('')
-    try {
-      for (let i = 0; i < demos.length; i++) {
-        setProgreso(`Quitando ${i + 1} de ${demos.length}: ${demos[i].nombre}`)
-        await llamar('eliminarProducto', { id: demos[i].id })
-      }
-    } catch (err) {
-      setError(err.message)
-    }
-    setProgreso('')
-    await recargar()
-  }
-
-  return (
-    <div className="admin-bloque">
-      <h2>Productos de demostración</h2>
-      <p className="admin-sub">
-        Productos de muestra (código "demo-…") para enseñar la tienda mientras se carga el catálogo real. Se quitan
-        todos con un clic, sin afectar los productos reales.
-      </p>
-      {progreso && <p className="admin-sub"><strong>{progreso}…</strong></p>}
-      {error && <p className="error">{error}</p>}
-      {demos.length > 0 ? (
-        <button className="boton boton-secundario" onClick={quitar} disabled={!!progreso}>
-          Quitar {demos.length} productos de demostración
-        </button>
-      ) : (
-        <button className="boton boton-primario" onClick={cargar} disabled={!!progreso}>
-          Cargar {productosEjemplo.length} productos de demostración
-        </button>
-      )}
-    </div>
   )
 }

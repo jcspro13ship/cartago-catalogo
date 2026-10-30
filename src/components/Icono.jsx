@@ -17,6 +17,12 @@ const TRAZOS = {
   flecha: <path d="M5 12h14M13 6l6 6-6 6" />,
   'flecha-abajo': <path d="m6 9 6 6 6-6" />,
   mas: <path d="M12 5v14M5 12h14" />,
+  candado: (
+    <>
+      <rect x="5" y="11" width="14" height="10" rx="2" />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+    </>
+  ),
   play: <path d="M8 5.5v13l11-6.5-11-6.5Z" fill="currentColor" />,
   volver: <path d="M19 12H5M11 6l-6 6 6 6" />,
   ubicacion: (

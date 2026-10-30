@@ -2825,3 +2825,15 @@ img.galeria-principal {
   opacity: 0.45;
   object-position: center 35%;
 }
+
+.footer-admin {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.footer-admin:hover {
+  opacity: 1;
+}
