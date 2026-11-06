@@ -29,5 +29,7 @@ export function iniciarPixel() {
 }
 
 export function rastrear(evento, datos) {
+  // La ficha de producto puede avisar antes que el Layout: se inicia aquí mismo.
+  iniciarPixel()
   if (window.fbq) window.fbq('track', evento, datos)
 }
