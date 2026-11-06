@@ -22,7 +22,10 @@ export default function ProductoCard({ producto, stock }) {
           <LogoMarca marca={producto.marca} className="logo-marca-chica" />
         </div>
         <h3>{producto.nombre}</h3>
-        <p className={`producto-card-precio ${precio(producto) > 0 ? '' : 'consultar'}`}>{texto(producto)}</p>
+        <p className={`producto-card-precio ${precio(producto) > 0 ? '' : 'consultar'}`}>
+          {producto.precio_desde ? 'Desde ' : ''}
+          {texto(producto)}
+        </p>
       </div>
     </Link>
   )

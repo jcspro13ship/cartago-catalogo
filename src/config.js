@@ -32,6 +32,20 @@ export const TASA_USD_EJEMPLO = 3000
 // contraentrega (Dropi).
 export const TOPE_CONTRAENTREGA = 1000000
 
+// Píxel de Meta (Facebook / Instagram).
+export const META_PIXEL_ID = '102264959871887'
+
+// Avisos de la cinta superior mientras no se editen en Ajustes del panel.
+// Las marcas se intercalan después del primer aviso.
+export const AVISOS = [
+  'Somos una tienda multimarca',
+  'Envíos a todo Colombia y al exterior',
+  'Pago contraentrega con Dropi',
+  'Piezas personalizadas hechas a mano',
+  'Más de 30 años en el gremio equino',
+  'Asesoría por WhatsApp: 315 002 2233',
+]
+
 // Árbol de categorías del menú y del catálogo (ver docs/CATEGORIAS.md).
 // En el Sheet cada producto lleva solo dos datos: "categoria" (el primer
 // nivel: Monturas, Accesorios…) y "subcategoria" (el último nivel: Aperos,
@@ -62,15 +76,21 @@ export const CATEGORIAS = [
       },
       {
         nombre: 'Jinete',
-        descripcion: 'Sombreros, prendas, marroquinería y bisutería',
-        hijos: hojas('Sombreros', 'Prendas', 'Marroquinería', 'Bisutería'),
+        descripcion: 'Sombreros, marroquinería y bisutería',
+        // general: el nodo también admite productos directamente (los sombreros
+        // van en "Sombreros", y las gorras y ponchos en sus propias líneas).
+        hijos: [
+          { nombre: 'Sombreros', general: true, hijos: hojas('Gorras', 'Ponchos') },
+          { nombre: 'Marroquinería', general: true, hijos: hojas('Cinturones', 'Billeteras', 'Manos libres', 'Estuches', 'Canguros') },
+          { nombre: 'Bisutería', general: true, hijos: hojas('Cheval', 'Llaveros', 'Accesorios mini') },
+        ],
       },
     ],
   },
   {
     nombre: 'Cuidado del caballo',
-    descripcion: 'Aseo, herraje y protección',
-    hijos: [],
+    descripcion: 'Aseo, suplementos y accesorios',
+    hijos: hojas('Aseo', 'Suplementos', 'Accesorios'),
   },
   {
     nombre: 'Caninos',

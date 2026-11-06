@@ -25,11 +25,14 @@ function abreviar(color) {
     .toUpperCase()
 }
 
-// Códigos únicos para cada color: id-NEG, id-CAF… (id solo si no hay color).
+// Códigos únicos para cada opción: id-NEG, id-CAF-L… (id solo si no hay color
+// ni tamaño). Las opciones que ya existían conservan su código.
 function asignarSkus(id, filas) {
-  const usados = new Set()
+  const usados = new Set(filas.map((f) => f.sku).filter(Boolean))
   return filas.map((f) => {
-    let base = f.color.trim() ? `${id}-${abreviar(f.color) || 'COL'}` : id
+    if (f.sku) return f
+    const partes = [f.color.trim() && (abreviar(f.color) || 'COL'), f.talla.trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6)].filter(Boolean)
+    let base = [id, ...partes].join('-')
     let sku = base
     let n = 2
     while (usados.has(sku)) sku = `${base}${n++}`
@@ -58,7 +61,9 @@ export default function EditorProducto({ producto, variantes, productos, marcas,
   const nuevo = !producto
   const [form, setForm] = useState(() => ({ ...VACIO, ...(producto || {}), precio: producto?.precio || '', precio_usd: producto?.precio_usd || '' }))
   const [colores, setColores] = useState(() =>
-    variantes.length ? variantes.map((v) => ({ color: v.color, stock: v.stock === null ? '' : v.stock })) : [{ color: '', stock: '' }]
+    variantes.length
+      ? variantes.map((v) => ({ sku: v.sku, color: v.color || '', talla: v.talla || '', precio: v.precio || '', stock: v.stock === null ? '' : v.stock }))
+      : [{ color: '', talla: '', precio: '', stock: '' }]
   )
   const [fotos, setFotos] = useState(() => [...(producto?.imagenes || [])])
   const [subiendo, setSubiendo] = useState(0)
@@ -136,10 +141,16 @@ export default function EditorProducto({ producto, variantes, productos, marcas,
     if (!form.categoria) return setError('Elige una categoría.')
     if (!form.id.trim()) return setError('El producto necesita un código.')
     if (subiendo > 0) return setError('Espera a que terminen de subir las fotos.')
-    // Filas con color; si ninguna tiene, el producto queda con una sola variante sin color.
-    const conColor = colores.filter((c) => c.color.trim())
-    const filas = conColor.length ? conColor : [{ color: '', stock: colores[0] ? colores[0].stock : '' }]
-    const variantesFinales = asignarSkus(form.id.trim(), filas).map((c) => ({ sku: c.sku, color: c.color.trim(), stock: String(c.stock).trim() === '' ? '' : Number(c.stock) || 0 }))
+    // Filas con color o tamaño; si ninguna tiene, el producto queda con una sola opción.
+    const conDatos = colores.filter((c) => c.color.trim() || c.talla.trim())
+    const filas = conDatos.length ? conDatos : colores.slice(0, 1).map((c) => ({ ...c, color: '', talla: '' }))
+    const variantesFinales = asignarSkus(form.id.trim(), filas).map((c) => ({
+      sku: c.sku,
+      color: c.color.trim(),
+      talla: c.talla.trim(),
+      precio: Number(c.precio) || '',
+      stock: String(c.stock).trim() === '' ? '' : Number(c.stock) || 0,
+    }))
     setGuardando(true)
     try {
       await ejecutar(
@@ -254,19 +265,31 @@ export default function EditorProducto({ producto, variantes, productos, marcas,
           </div>
           <p className="admin-sub">Si el precio queda en 0 o vacío, la tienda muestra "Precio a consultar".</p>
 
-          <h2>Colores y stock</h2>
+          <h2>Colores, tamaños y stock</h2>
+          <div className="admin-color-fila admin-color-titulos" aria-hidden="true">
+            <span>Color</span>
+            <span>Tamaño</span>
+            <span>Precio</span>
+            <span>Cantidad</span>
+          </div>
           {colores.map((c, i) => (
             <div key={i} className="admin-color-fila">
-              <input placeholder={colores.length === 1 ? 'Color (vacío si no maneja colores)' : 'Color'} value={c.color} onChange={(e) => cambiarColor(i, 'color', e.target.value)} />
+              <input placeholder="Color" aria-label="Color" value={c.color} onChange={(e) => cambiarColor(i, 'color', e.target.value)} />
+              <input placeholder="Tamaño" aria-label="Tamaño" value={c.talla} onChange={(e) => cambiarColor(i, 'talla', e.target.value)} />
+              <input type="number" min="0" step="1000" inputMode="numeric" aria-label="Precio de esta opción" placeholder="Igual" value={c.precio} onChange={(e) => cambiarColor(i, 'precio', e.target.value)} />
               <input type="number" min="0" inputMode="numeric" value={c.stock} placeholder="Sin control" onChange={(e) => cambiarColor(i, 'stock', e.target.value)} aria-label="Unidades" />
-              <button type="button" className="admin-quitar" onClick={() => setColores((cs) => cs.filter((_, j) => j !== i))} disabled={colores.length === 1} aria-label="Quitar color">
+              <button type="button" className="admin-quitar" onClick={() => setColores((cs) => cs.filter((_, j) => j !== i))} disabled={colores.length === 1} aria-label="Quitar opción">
                 ×
               </button>
             </div>
           ))}
+          <p className="admin-sub">
+            Color y tamaño vacíos si el producto no los maneja. Precio vacío = usa el precio de arriba; si cada tamaño vale
+            distinto, escribe aquí su precio.
+          </p>
           <p className="admin-sub">Cantidad vacía = sin control de inventario (siempre disponible).</p>
-          <button type="button" className="admin-enlace" onClick={() => setColores((cs) => [...cs, { color: '', stock: '' }])}>
-            + Agregar color
+          <button type="button" className="admin-enlace" onClick={() => setColores((cs) => [...cs, { color: '', talla: '', precio: '', stock: '' }])}>
+            + Agregar opción
           </button>
         </div>
 

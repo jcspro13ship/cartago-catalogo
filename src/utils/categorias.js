@@ -76,8 +76,9 @@ export function hojasDe(categoria) {
   const recorrer = (nodo, camino) => {
     for (const hijo of nodo.hijos || []) {
       const ruta = [...camino, hijo.nombre]
-      if (hijo.hijos && hijo.hijos.length) recorrer(hijo, ruta)
-      else lista.push({ nombre: hijo.nombre, etiqueta: ruta.join(' › ') })
+      const tieneHijos = hijo.hijos && hijo.hijos.length
+      if (!tieneHijos || hijo.general) lista.push({ nombre: hijo.nombre, etiqueta: ruta.join(' › ') })
+      if (tieneHijos) recorrer(hijo, ruta)
     }
   }
   recorrer(raiz, [])

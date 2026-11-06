@@ -10,7 +10,7 @@
   --cafe: #463427;
   --cafe-oscuro: #2f231a;
   --gris: #f3f5f6;
-  --acento: #771541;
+  --acento: #8a0d40;
 
   /* Nombres históricos usados en todo el CSS, remapeados a la paleta nueva. */
   --vino: var(--cafe);
@@ -296,7 +296,7 @@ p {
 }
 
 .header-logo img {
-  height: 50px;
+  height: 66px;
   width: auto;
 }
 
@@ -357,7 +357,7 @@ p {
   }
 
   .header-logo img {
-    height: 42px;
+    height: 50px;
   }
 
 }
@@ -464,11 +464,12 @@ p {
 
 .menu-enlace {
   display: block;
-  padding: 0.85rem 0.8rem;
-  font-size: 0.8rem;
+  padding: 0.85rem 0.6rem;
+  font-size: 0.76rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
+  white-space: nowrap;
   color: var(--tinta);
   transition: color 0.2s;
 }
@@ -499,9 +500,9 @@ p {
 .menu-flecha {
   display: grid;
   place-items: center;
-  width: 26px;
+  width: 22px;
   height: 26px;
-  margin-right: 0.35rem;
+  margin-right: 0.15rem;
   border: 0;
   background: none;
   color: var(--tinta-suave);
@@ -596,19 +597,31 @@ p {
   }
 }
 
+@media (max-width: 1160px) and (min-width: 761px) {
+  .menu-secundario {
+    display: none;
+  }
+}
+
 @media (max-width: 1020px) and (min-width: 761px) {
   .header-buscar {
     width: 200px;
   }
 
   .menu-enlace {
-    padding-left: 0.55rem;
-    padding-right: 0.55rem;
-    font-size: 0.74rem;
+    padding-left: 0.4rem;
+    padding-right: 0.4rem;
+    font-size: 0.7rem;
+    letter-spacing: 0.03em;
   }
 
-  .menu-secundario {
-    display: none;
+  .menu-item.con-sub .menu-enlace {
+    padding-right: 0;
+  }
+
+  .menu-flecha {
+    width: 18px;
+    margin-right: 0;
   }
 }
 
@@ -2188,7 +2201,7 @@ img.galeria-principal {
 }
 
 .footer-marca img {
-  height: 64px;
+  height: 96px;
   width: auto;
   margin-bottom: 1rem;
 }
@@ -2836,4 +2849,87 @@ img.galeria-principal {
 
 .footer-admin:hover {
   opacity: 1;
+}
+
+/* ---------- Marcas en el menú ---------- */
+
+.submenu-marcas {
+  min-width: 240px;
+}
+
+.submenu .submenu-marca {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.35rem 0;
+}
+
+.submenu-marca .logo-marca {
+  width: 56px;
+  flex-shrink: 0;
+}
+
+.submenu-marca .logo-marca > span {
+  display: none;
+}
+
+/* ---------- Compartir ---------- */
+
+.compartir {
+  position: relative;
+  display: inline-block;
+}
+
+.compartir-boton {
+  min-height: 40px;
+  padding: 0.5rem 1rem;
+  font-size: 0.74rem;
+}
+
+.compartir-ancho {
+  display: block;
+  margin-top: 0.75rem;
+}
+
+.compartir-ancho .compartir-boton {
+  width: 100%;
+  min-height: 48px;
+}
+
+.catalogo-compartir {
+  margin-top: 0.75rem;
+}
+
+.compartir-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 40;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  padding: 0.4rem;
+  background: var(--blanco);
+  border: 1px solid var(--linea);
+  border-radius: var(--radio-chico);
+  box-shadow: var(--sombra-alta);
+}
+
+.compartir-menu a,
+.compartir-menu button {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.7rem;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  font-size: 0.9rem;
+  color: var(--tinta);
+  text-align: left;
+}
+
+.compartir-menu a:hover,
+.compartir-menu button:hover {
+  background: var(--gris);
 }

@@ -7,6 +7,7 @@ import { normalizar } from '../utils/formato'
 import { linkWhatsApp } from '../utils/whatsapp'
 import { ordenarCategorias, ordenarHijos, nodoEn, rutaDeProducto, estaEnRuta } from '../utils/categorias'
 import { Link } from 'react-router-dom'
+import Compartir from '../components/Compartir'
 
 const TAMANO_PAGINA = 24
 const TODAS = 'Todas'
@@ -182,6 +183,11 @@ export default function Catalogo() {
                   : 'Todos nuestros productos'}
           </h1>
           {camino.length > 0 && nodoEn(camino)?.descripcion && <p className="catalogo-descripcion">{nodoEn(camino).descripcion}</p>}
+          <Compartir
+            titulo={camino.length ? camino[camino.length - 1] : marca !== TODAS ? `Marca ${marca}` : 'Catálogo'}
+            etiqueta={camino.length || marca !== TODAS ? 'Compartir esta línea' : 'Compartir catálogo'}
+            className="catalogo-compartir"
+          />
         </div>
       </section>
 

@@ -396,9 +396,26 @@
 
 .admin-color-fila {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 90px 40px;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr) 86px 40px;
   gap: 0.5rem;
   margin-bottom: 0.5rem;
+}
+
+.admin-color-titulos {
+  margin-bottom: 0.15rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--tinta-suave);
+}
+
+@media (max-width: 560px) {
+  .admin-color-fila {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 40px;
+  }
+
+  .admin-color-titulos {
+    display: none;
+  }
 }
 
 .admin-marca-fila {
@@ -727,4 +744,13 @@
 .admin-video-acciones .deshabilitado {
   opacity: 0.6;
   pointer-events: none;
+}
+
+.admin-bloque textarea.admin-avisos {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--linea);
+  border-radius: var(--radio-chico);
+  background: var(--blanco);
+  resize: vertical;
 }

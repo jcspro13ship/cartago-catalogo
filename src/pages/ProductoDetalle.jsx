@@ -10,13 +10,15 @@ import Icono, { IconoWhatsApp } from '../components/Icono'
 import { useMoneda } from '../context/MonedaContext'
 import { muestraColor } from '../utils/colores'
 import { linkWhatsApp } from '../utils/whatsapp'
+import { rastrear } from '../utils/pixel'
+import Compartir from '../components/Compartir'
 
 // Tope de unidades por pedido cuando el producto no lleva control de inventario.
 const MAX_SIN_CONTROL = 20
 
 function textoStock(stock) {
   if (stock === null) return { texto: 'Disponible', clase: 'stock-ok' }
-  if (stock <= 0) return { texto: 'Agotado en este color', clase: 'stock-agotado' }
+  if (stock <= 0) return { texto: 'Agotado en esta opción', clase: 'stock-agotado' }
   if (stock <= 3) return { texto: `¡Últimas ${stock === 1 ? 'unidad' : `${stock} unidades`}!`, clase: 'stock-pocas' }
   return { texto: 'Disponible', clase: 'stock-ok' }
 }
@@ -29,7 +31,8 @@ export default function ProductoDetalle() {
 
   const producto = productos.find((p) => p.id === id && p.activo)
   const variantes = useMemo(() => variantesDe(todas, id), [todas, id])
-  const tieneColores = variantes.some((v) => v.color)
+  const colores = useMemo(() => [...new Set(variantes.map((v) => v.color).filter(Boolean))], [variantes])
+  const tallas = useMemo(() => [...new Set(variantes.map((v) => v.talla).filter(Boolean))], [variantes])
 
   const [sku, setSku] = useState(null)
   const [cantidad, setCantidad] = useState(1)
@@ -51,6 +54,14 @@ export default function ProductoDetalle() {
       document.title = 'Talabartería Cartago · Artículos ecuestres y marroquinería desde 1992'
     }
   }, [producto])
+
+  useEffect(() => {
+    if (producto) {
+      rastrear('ViewContent', { content_ids: [producto.id], content_name: producto.nombre, content_type: 'product', value: producto.precio, currency: 'COP' })
+    }
+    // Una vez por producto, aunque el catálogo se refresque después.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [producto && producto.id])
 
   const relacionados = useMemo(() => {
     if (!producto) return []
@@ -90,6 +101,29 @@ export default function ProductoDetalle() {
   const tope = stock === null ? MAX_SIN_CONTROL : stock
   const agotadoTotal = stockTotal(todas, producto.id) === 0
   const estadoStock = textoStock(stock)
+  // El tamaño puede tener precio propio; sin él, vale el precio del producto.
+  const conPrecioPropio = variante && variante.precio > 0
+  const valor = conPrecioPropio
+    ? { precio: variante.precio, precio_usd: 0 }
+    : { precio: producto.precio_base, precio_usd: producto.precio_usd }
+
+  function elegir(campo, opcion) {
+    const iguales = variantes.filter((v) => v[campo] === opcion)
+    const otro = campo === 'color' ? 'talla' : 'color'
+    const siguiente =
+      iguales.find((v) => variante && v[otro] === variante[otro]) || iguales.find(hayStock) || iguales[0]
+    if (!siguiente) return
+    setSku(siguiente.sku)
+    setCantidad(1)
+    setAgregado(false)
+  }
+
+  // Una opción se ve agotada si no hay stock combinada con lo ya elegido.
+  function opcionAgotada(campo, opcion) {
+    const otro = campo === 'color' ? 'talla' : 'color'
+    const candidatas = variantes.filter((v) => v[campo] === opcion && (!variante || !variante[otro] || v[otro] === variante[otro]))
+    return !candidatas.some(hayStock)
+  }
 
   function handleAgregar() {
     if (!variante || !puedePedir) return
@@ -98,19 +132,21 @@ export default function ProductoDetalle() {
       productoId: producto.id,
       nombre: producto.nombre,
       color: variante.color,
-      precio: producto.precio,
-      precio_usd: producto.precio_usd,
+      talla: variante.talla,
+      precio: valor.precio,
+      precio_usd: valor.precio_usd,
       imagen: producto.imagenes[0] || null,
       personalizacion: personalizacion.trim(),
       stock,
       cantidad,
     })
     setAgregado(true)
+    rastrear('AddToCart', { content_ids: [producto.id], content_name: producto.nombre, content_type: 'product', value: valor.precio * cantidad, currency: 'COP' })
   }
 
   const textoConsulta = `Hola, me interesa el producto "${producto.nombre}"${
     variante && variante.color ? ` en color ${variante.color}` : ''
-  }. ¿Me pueden dar más información?`
+  }${variante && variante.talla ? `, tamaño ${variante.talla}` : ''}. ¿Me pueden dar más información?`
 
   return (
     <div className="pagina-producto">
@@ -136,7 +172,7 @@ export default function ProductoDetalle() {
               <LogoMarca marca={producto.marca} className="logo-marca-grande" />
             </div>
             <h1>{producto.nombre}</h1>
-            <p className={`producto-precio ${precio(producto) > 0 ? '' : 'consultar'}`}>{texto(producto)}</p>
+            <p className={`producto-precio ${precio(valor) > 0 ? '' : 'consultar'}`}>{texto(valor)}</p>
             <p className="producto-descripcion">{producto.descripcion}</p>
 
             {producto.garantia && (
@@ -146,28 +182,51 @@ export default function ProductoDetalle() {
               </div>
             )}
 
-            {tieneColores && (
+            {colores.length > 0 && (
               <div className="selector">
                 <p className="selector-label">
-                  Color: <strong>{variante ? variante.color : '—'}</strong>
+                  Color: <strong>{variante && variante.color ? variante.color : '—'}</strong>
                 </p>
                 <div className="selector-opciones">
-                  {variantes.map((v) => {
-                    const muestra = muestraColor(v.color)
+                  {colores.map((color) => {
+                    const muestra = muestraColor(color)
+                    const agotada = opcionAgotada('color', color)
+                    const activa = variante && variante.color === color
                     return (
                       <button
-                        key={v.sku}
-                        className={`chip chip-color ${sku === v.sku ? 'chip-activo' : ''} ${!hayStock(v) ? 'chip-agotado' : ''}`}
-                        onClick={() => {
-                          setSku(v.sku)
-                          setCantidad(1)
-                          setAgregado(false)
-                        }}
-                        aria-pressed={sku === v.sku}
-                        title={!hayStock(v) ? `${v.color} (agotado)` : v.color}
+                        key={color}
+                        className={`chip chip-color ${activa ? 'chip-activo' : ''} ${agotada ? 'chip-agotado' : ''}`}
+                        onClick={() => elegir('color', color)}
+                        aria-pressed={!!activa}
+                        title={agotada ? `${color} (agotado)` : color}
                       >
                         {muestra && <span className="muestra" style={{ background: muestra }} />}
-                        {v.color}
+                        {color}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {tallas.length > 0 && (
+              <div className="selector">
+                <p className="selector-label">
+                  Tamaño: <strong>{variante && variante.talla ? variante.talla : '—'}</strong>
+                </p>
+                <div className="selector-opciones">
+                  {tallas.map((talla) => {
+                    const agotada = opcionAgotada('talla', talla)
+                    const activa = variante && variante.talla === talla
+                    return (
+                      <button
+                        key={talla}
+                        className={`chip ${activa ? 'chip-activo' : ''} ${agotada ? 'chip-agotado' : ''}`}
+                        onClick={() => elegir('talla', talla)}
+                        aria-pressed={!!activa}
+                        title={agotada ? `${talla} (agotado)` : talla}
+                      >
+                        {talla}
                       </button>
                     )
                   })}
@@ -218,7 +277,7 @@ export default function ProductoDetalle() {
               <p className="producto-agotado-nota">
                 {agotadoTotal
                   ? 'Este producto está agotado por ahora. Escríbenos y te avisamos cuándo llega o te ofrecemos una alternativa.'
-                  : 'Este color está agotado. Prueba con otro color o escríbenos.'}
+                  : 'Esta opción está agotada. Prueba con otra o escríbenos.'}
               </p>
             )}
 
@@ -233,6 +292,8 @@ export default function ProductoDetalle() {
             <a href={linkWhatsApp(textoConsulta)} className="boton boton-secundario boton-ancho" target="_blank" rel="noopener noreferrer">
               <IconoWhatsApp tamano={18} /> Preguntar por este producto
             </a>
+
+            <Compartir titulo={producto.nombre} etiqueta="Compartir este producto" className="compartir-ancho" />
 
             <ul className="producto-garantias">
               <li>

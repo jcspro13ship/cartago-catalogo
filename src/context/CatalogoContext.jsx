@@ -8,7 +8,7 @@ export function CatalogoProvider({ children }) {
     const inicial = catalogoInicial()
     return inicial
       ? { ...inicial, cargando: false }
-      : { productos: [], variantes: [], config: { tasaUsd: 0, logosMarcas: {}, preguntas: null, videos: {} }, cargando: true, fuente: null }
+      : { productos: [], variantes: [], config: { tasaUsd: 0, logosMarcas: {}, preguntas: null, videos: {}, marcas: [], avisos: null, avisosMarcas: true }, cargando: true, fuente: null }
   })
 
   useEffect(() => {

@@ -33,9 +33,37 @@ function normalizarVariantes(variantes) {
     producto_id: String(v.producto_id),
     sku: String(v.sku),
     color: v.color ? String(v.color).trim() : '',
+    talla: v.talla ? String(v.talla).trim() : '',
+    // Precio propio del tamaño; 0 = usa el precio del producto.
+    precio: Number(v.precio) || 0,
     // Stock vacío en el Sheet = sin control de inventario: siempre disponible.
     stock: v.stock === '' || v.stock === null || v.stock === undefined ? null : Number(v.stock) || 0,
   }))
+}
+
+// Con tamaños de distinto precio, el catálogo muestra "Desde" el menor. El
+// precio del producto se conserva en precio_base para las opciones sin precio propio.
+function conPrecioDesde(productos, variantes) {
+  const precios = {}
+  variantes.forEach((v) => {
+    if (v.precio > 0) (precios[v.producto_id] = precios[v.producto_id] || []).push(v.precio)
+  })
+  return productos.map((p) => {
+    const lista = precios[p.id]
+    if (!lista) return { ...p, precio_base: p.precio }
+    const minimo = Math.min(...lista)
+    return { ...p, precio_base: p.precio, precio: minimo, precio_usd: 0, precio_desde: lista.some((x) => x !== minimo) }
+  })
+}
+
+function armar(data, fuente) {
+  const variantes = normalizarVariantes(data.variantes)
+  return {
+    productos: conPrecioDesde(normalizarProductos(data.productos), variantes),
+    variantes,
+    config: normalizarConfig(data.config, data.marcas),
+    fuente,
+  }
 }
 
 // Ajustes generales que Cartago edita en la hoja "Configuracion" (clave | valor).
@@ -53,34 +81,27 @@ function normalizarConfig(config, marcas) {
     // Si el JSON quedó mal escrito se usan las preguntas por defecto.
   }
   const texto = (clave) => String((config && config[clave]) || '').trim()
+  const avisos = texto('avisos').split('\n').map((a) => a.trim()).filter(Boolean)
   return {
     tasaUsd: tasa > 0 ? tasa : TASA_USD_EJEMPLO,
     logosMarcas: logos,
     preguntas,
     videos: { personalizacion: texto('video_personalizacion'), inicio: texto('video_inicio') },
+    marcas: (Array.isArray(marcas) ? marcas : []).map((m) => String((m && m.marca) || '').trim()).filter(Boolean),
+    avisos: avisos.length ? avisos : null,
+    avisosMarcas: texto('avisos_marcas') !== 'NO',
   }
 }
 
 function datosEjemplo() {
-  return {
-    productos: normalizarProductos(productosEjemplo),
-    variantes: normalizarVariantes(variantesEjemplo),
-    config: normalizarConfig(null),
-    fuente: 'ejemplo',
-  }
+  return armar({ productos: productosEjemplo, variantes: variantesEjemplo, config: null }, 'ejemplo')
 }
 
 function leerCache() {
   try {
     const crudo = localStorage.getItem(CLAVE_CACHE)
     if (!crudo) return null
-    const data = JSON.parse(crudo)
-    return {
-      productos: normalizarProductos(data.productos),
-      variantes: normalizarVariantes(data.variantes),
-      config: normalizarConfig(data.config, data.marcas),
-      fuente: 'cache',
-    }
+    return armar(JSON.parse(crudo), 'cache')
   } catch {
     return null
   }
@@ -113,12 +134,7 @@ export async function cargarCatalogo() {
     } catch {
       // Sin espacio o en modo privado: el sitio funciona igual, solo sin caché.
     }
-    return {
-      productos: normalizarProductos(data.productos),
-      variantes: normalizarVariantes(data.variantes),
-      config: normalizarConfig(data.config, data.marcas),
-      fuente: 'sheets',
-    }
+    return armar(data, 'sheets')
   } catch (err) {
     console.error('No se pudo cargar el catálogo desde Google Sheets.', err)
     return leerCache() || datosEjemplo()

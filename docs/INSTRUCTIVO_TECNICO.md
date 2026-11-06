@@ -64,7 +64,8 @@ navegador. Las fotos se reducen a 2000 px antes de subirlas.
   personalizable, garantía. El código se propone solo según la categoría
   (m = Monturas, e = Equino, j = Jinete, c = Cuidado del caballo, k = Caninos).
 - **Stock rápido**: en la lista, "Stock" despliega los colores con − y +.
-- **Ajustes**: tasa del dólar, marcas y logos, usuarios y cambio de contraseña.
+- **Ajustes**: tasa del dólar, cinta de avisos, videos, preguntas frecuentes, marcas y logos, usuarios y cambio de contraseña.
+- **Tamaños con precio**: en Editar, cada opción lleva color, tamaño, precio y cantidad. Precio vacío = usa el precio del producto.
 - **Historial**: quién hizo cada cambio (también queda en la pestaña Historial).
 
 Seguridad: sesiones de 6 horas; 5 intentos fallidos bloquean el usuario

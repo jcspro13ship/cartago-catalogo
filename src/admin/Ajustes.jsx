@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { formatoPrecio } from '../utils/formato'
 import { PREGUNTAS_FRECUENTES } from '../data/preguntas'
 import { subirVideo, MAX_VIDEO_MB } from './fotos'
+import { AVISOS } from '../config'
 
 export default function Ajustes({ datos, usuarios, sesion, ejecutar }) {
   return (
@@ -9,11 +10,12 @@ export default function Ajustes({ datos, usuarios, sesion, ejecutar }) {
       <div className="admin-barra">
         <div>
           <h1>Ajustes</h1>
-          <p className="admin-sub">Tasa del dólar, videos, preguntas frecuentes, marcas y usuarios del panel.</p>
+          <p className="admin-sub">Tasa del dólar, cinta de avisos, videos, preguntas frecuentes, marcas y usuarios del panel.</p>
         </div>
       </div>
       <div className="admin-editor-grid">
         <Tasa actual={Number(datos.config.tasa_usd) || 0} ejecutar={ejecutar} />
+        <Avisos config={datos.config} ejecutar={ejecutar} />
         <Videos config={datos.config} ejecutar={ejecutar} />
         <Preguntas config={datos.config} ejecutar={ejecutar} />
         <Marcas marcas={datos.marcas} ejecutar={ejecutar} />
@@ -60,6 +62,35 @@ function Tasa({ actual, ejecutar }) {
       {estado.error && <p className="error">{estado.error}</p>}
       <button className="boton boton-primario" disabled={estado.ocupado || !(Number(valor) > 0) || Number(valor) === actual}>
         Guardar tasa
+      </button>
+    </form>
+  )
+}
+
+function Avisos({ config, ejecutar }) {
+  const [texto, setTexto] = useState(() => String(config.avisos || AVISOS.join('\n')))
+  const [conMarcas, setConMarcas] = useState(config.avisos_marcas !== 'NO')
+  const [estado, correr] = useAccion()
+  return (
+    <form
+      className="admin-bloque"
+      onSubmit={(e) => {
+        e.preventDefault()
+        correr(() =>
+          ejecutar('guardarConfig', { config: { avisos: texto.trim(), avisos_marcas: conMarcas ? 'SI' : 'NO' } }, 'Cinta de avisos guardada.')
+        )
+      }}
+    >
+      <h2>Cinta de avisos</h2>
+      <p className="admin-sub">La franja que se mueve arriba de la página. Escribe un aviso por línea.</p>
+      <textarea className="admin-avisos" rows={7} value={texto} onChange={(e) => setTexto(e.target.value)} aria-label="Avisos, uno por línea" />
+      <label className="admin-check">
+        <input type="checkbox" checked={conMarcas} onChange={(e) => setConMarcas(e.target.checked)} />
+        <span>Mostrar las marcas después del primer aviso (salen de la lista de Marcas)</span>
+      </label>
+      {estado.error && <p className="error">{estado.error}</p>}
+      <button className="boton boton-primario" disabled={estado.ocupado || !texto.trim()}>
+        Guardar avisos
       </button>
     </form>
   )

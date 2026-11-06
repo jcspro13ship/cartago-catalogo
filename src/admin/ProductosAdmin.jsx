@@ -138,30 +138,30 @@ export default function ProductosAdmin({ datos, ejecutar }) {
 
               {abierto === p.id && (
                 <div className="admin-variantes">
-                  {vars.length === 0 && <p className="admin-sub">Este producto no tiene colores. Agrégalos desde Editar.</p>}
+                  {vars.length === 0 && <p className="admin-sub">Este producto no tiene opciones. Agrégalas desde Editar.</p>}
                   {vars.map((v) =>
                     v.stock === null ? (
                       <div key={v.sku} className="admin-variante">
                         <span>
-                          {v.color || 'Único'} <small>{v.sku}</small>
+                          {[v.color, v.talla].filter(Boolean).join(' · ') || 'Único'} <small>{v.sku}</small>
                         </span>
                         <span className="admin-sub">Sin control: siempre disponible</span>
                       </div>
                     ) : (
                     <div key={v.sku} className="admin-variante">
                       <span>
-                        {v.color || 'Único'} <small>{v.sku}</small>
+                        {[v.color, v.talla].filter(Boolean).join(' · ') || 'Único'} <small>{v.sku}</small>
                       </span>
                       <div className="cantidad cantidad-chica">
                         <button
                           onClick={() => cambiarStock(v.sku, -1)}
                           disabled={ocupado === v.sku || v.stock <= 0}
-                          aria-label={`Restar una unidad de ${v.color || p.nombre}`}
+                          aria-label={`Restar una unidad de ${v.color || v.talla || p.nombre}`}
                         >
                           −
                         </button>
                         <span>{ocupado === v.sku ? '…' : v.stock}</span>
-                        <button onClick={() => cambiarStock(v.sku, 1)} disabled={ocupado === v.sku} aria-label={`Sumar una unidad de ${v.color || p.nombre}`}>
+                        <button onClick={() => cambiarStock(v.sku, 1)} disabled={ocupado === v.sku} aria-label={`Sumar una unidad de ${v.color || v.talla || p.nombre}`}>
                           +
                         </button>
                       </div>
@@ -169,7 +169,7 @@ export default function ProductosAdmin({ datos, ejecutar }) {
                     )
                   )}
                   <p className="admin-sub">
-                    Usa − cuando vendas una unidad y + cuando llegue mercancía. Los colores "sin control" se muestran
+                    Usa − cuando vendas una unidad y + cuando llegue mercancía. Las opciones "sin control" se muestran
                     siempre disponibles; para controlarlos, escribe la cantidad en Editar.
                   </p>
                 </div>

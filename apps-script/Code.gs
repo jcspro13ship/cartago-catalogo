@@ -12,14 +12,14 @@
 //
 // Paso a paso de instalación: docs/INSTRUCTIVO_TECNICO.md (en el repositorio del sitio)
 
-var VERSION = 5
+var VERSION = 6
 
 var ESTRUCTURA = {
   Productos: [
     'id', 'nombre', 'categoria', 'subcategoria', 'marca', 'descripcion', 'precio', 'precio_usd',
     'activo', 'destacado', 'personalizable', 'nota_personalizacion', 'garantia', 'actualizado', 'actualizado_por',
   ],
-  Variantes: ['producto_id', 'sku', 'color', 'stock'],
+  Variantes: ['producto_id', 'sku', 'color', 'stock', 'talla', 'precio'],
   Imagenes: ['producto_id', 'orden', 'url'],
   Marcas: ['marca', 'logo_url'],
   Configuracion: ['clave', 'valor', 'descripcion'],
@@ -36,14 +36,16 @@ var CATEGORIAS = {
     'Aperos', 'Jáquimas', 'Riendas', 'Frenos', 'Alfombras', 'Pellones', 'Alforjas',
     'Pecheras', 'Cinchas', 'Grupas', 'Arretrancos', 'Rejos y chipas',
     'Guardabarros', 'Arciones', 'Tarabas y estribos', 'Espuelas',
-    'Sombreros', 'Prendas', 'Marroquinería', 'Bisutería',
+    'Sombreros', 'Gorras', 'Ponchos',
+    'Marroquinería', 'Cinturones', 'Billeteras', 'Manos libres', 'Estuches', 'Canguros',
+    'Bisutería', 'Cheval', 'Llaveros', 'Accesorios mini',
   ],
-  'Cuidado del caballo': [''],
+  'Cuidado del caballo': ['Aseo', 'Suplementos', 'Accesorios'],
   Caninos: ['Bozales', 'Collares', 'Pecheras', 'Traíllas', 'Brazaletes'],
 }
 var MARCAS = ['Cartago', 'San Fermín', 'Mesacé', 'Al Torno', 'Sybec', 'Natural V.', 'Cheval']
 
-var CACHE_CATALOGO = 'catalogo_json_v3'
+var CACHE_CATALOGO = 'catalogo_json_v4'
 var CACHE_SEGUNDOS = 300 // el catálogo público se relee del Sheet como mucho cada 5 min
 var SESION_SEGUNDOS = 6 * 60 * 60 // las sesiones del panel vencen a las 6 horas
 var MAX_INTENTOS = 5 // intentos fallidos antes de bloquear el usuario 15 minutos
@@ -135,6 +137,8 @@ function leerCatalogo_() {
       producto_id: String(v.producto_id),
       sku: String(v.sku),
       color: String(v.color || ''),
+      talla: String(v.talla || ''),
+      precio: Number(v.precio) || 0,
       // Stock vacío = sin control de inventario: la tienda lo muestra disponible.
       stock: v.stock === '' || v.stock === null ? null : Number(v.stock) || 0,
     }
@@ -154,6 +158,7 @@ function leerCatalogo_() {
     variantes: variantes,
     marcas: marcas,
     config: config,
+    version: VERSION,
     actualizado: new Date().toISOString(),
   }
 }
@@ -243,7 +248,7 @@ function conCandado_(fn) {
 function guardarProducto_(p, variantes, imagenes, nuevo, usuario) {
   if (!p || !p.id) throw new Error('El producto no tiene id.')
   var id = String(p.id).trim()
-  if (!/^[a-z0-9-]{1,20}$/i.test(id)) throw new Error('El id solo puede tener letras, números y guiones.')
+  if (!/^[a-z0-9-]{1,40}$/i.test(id)) throw new Error('El id solo puede tener letras, números y guiones.')
   if (!String(p.nombre || '').trim()) throw new Error('El producto necesita un nombre.')
 
   var tabla = leerTabla_('Productos')
@@ -275,9 +280,16 @@ function guardarProducto_(p, variantes, imagenes, nuevo, usuario) {
     var skus = {}
     var filasVariantes = variantes.map(function (v) {
       var sku = String(v.sku || id).trim()
-      if (skus[sku]) throw new Error('El código ' + sku + ' está repetido en los colores.')
+      if (skus[sku]) throw new Error('El código ' + sku + ' está repetido en las opciones.')
       skus[sku] = true
-      return { producto_id: id, sku: sku, color: String(v.color || '').trim(), stock: v.stock === '' || v.stock === null || v.stock === undefined ? '' : Math.max(0, Math.floor(Number(v.stock) || 0)) }
+      return {
+        producto_id: id,
+        sku: sku,
+        color: String(v.color || '').trim(),
+        stock: v.stock === '' || v.stock === null || v.stock === undefined ? '' : Math.max(0, Math.floor(Number(v.stock) || 0)),
+        talla: String(v.talla || '').trim(),
+        precio: Number(v.precio) > 0 ? Number(v.precio) : '',
+      }
     })
     reemplazarHijos_('Variantes', id, filasVariantes)
   }
@@ -508,8 +520,9 @@ function escribirFila_(tabla, numeroFila, registro) {
   var fila = tabla.encabezados.map(function (h) {
     return registro.hasOwnProperty(h) ? registro[h] : ''
   })
-  if (numeroFila) tabla.hoja.getRange(numeroFila, 1, 1, fila.length).setValues([fila])
-  else tabla.hoja.appendRow(fila)
+  var destino = numeroFila || tabla.hoja.getLastRow() + 1
+  formatearCodigos_(tabla, destino - 1)
+  tabla.hoja.getRange(destino, 1, 1, fila.length).setValues([fila])
 }
 
 // Reemplaza las filas de un producto en Variantes o Imagenes por las nuevas.
@@ -533,7 +546,17 @@ function reescribirHoja_(nombre, filas) {
       return r.hasOwnProperty(h) ? r[h] : ''
     })
   })
+  formatearCodigos_(tabla, valores.length)
   hoja.getRange(2, 1, valores.length, ancho).setValues(valores)
+}
+
+// Los códigos son texto: sin esto, Sheets vuelve "085" el número 85 y el
+// producto pierde sus colores y fotos.
+function formatearCodigos_(tabla, filas) {
+  ;['id', 'producto_id', 'sku'].forEach(function (columna) {
+    var i = tabla.encabezados.indexOf(columna)
+    if (i !== -1) tabla.hoja.getRange(2, i + 1, filas, 1).setNumberFormat('@')
+  })
 }
 
 function esVerdadero_(valor) {

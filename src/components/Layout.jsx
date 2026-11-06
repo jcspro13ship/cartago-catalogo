@@ -1,25 +1,21 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useCart } from '../context/CartContext'
 import { useMoneda } from '../context/MonedaContext'
-import { CATEGORIAS, EMPRESA, TRANSPORTADORAS } from '../config'
+import { useCatalogo } from '../context/CatalogoContext'
+import { AVISOS, CATEGORIAS, EMPRESA, TRANSPORTADORAS } from '../config'
+import { iniciarPixel, rastrear } from '../utils/pixel'
+import LogoMarca from './LogoMarca'
 import { linkACamino } from '../utils/categorias'
 import { linkWhatsApp } from '../utils/whatsapp'
 import Icono, { IconoWhatsApp } from './Icono'
 
 const BASE = import.meta.env.BASE_URL
 
-const ANUNCIOS = [
-  'Envíos a todo Colombia y al exterior',
-  'Pago contraentrega con Dropi',
-  'Piezas personalizadas hechas a mano',
-  'Más de 30 años en el gremio equino',
-  'Asesoría por WhatsApp: 315 002 2233',
-]
-
 export default function Layout() {
   const { cantidadTotal } = useCart()
-  const { pathname } = useLocation()
+  const { pathname, search } = useLocation()
+  const { productos, config } = useCatalogo()
   const [menuAbierto, setMenuAbierto] = useState(false)
   const [termino, setTermino] = useState('')
   const navigate = useNavigate()
@@ -30,6 +26,29 @@ export default function Layout() {
     navigate(q ? `/catalogo?q=${encodeURIComponent(q)}` : '/catalogo')
     setTermino('')
   }
+
+  // Marcas con productos, en el orden de Ajustes > Marcas.
+  const marcas = useMemo(() => {
+    const conProductos = new Set(productos.filter((p) => p.activo).map((p) => p.marca).filter(Boolean))
+    return [...new Set([...config.marcas, ...conProductos])].filter((m) => conProductos.has(m))
+  }, [productos, config.marcas])
+
+  const avisos = useMemo(() => {
+    const lista = config.avisos || AVISOS
+    return config.avisosMarcas ? [lista[0], ...marcas, ...lista.slice(1)] : lista
+  }, [config.avisos, config.avisosMarcas, marcas])
+
+  // Una visita por página; la búsqueda (?q=) cambia con cada letra y no cuenta.
+  const vista = useMemo(() => {
+    const params = new URLSearchParams(search)
+    params.delete('q')
+    return `${pathname}?${params}`
+  }, [pathname, search])
+
+  useEffect(() => {
+    iniciarPixel()
+    rastrear('PageView')
+  }, [vista])
 
   // Al cambiar de página: arriba del todo y menú del celular cerrado.
   useEffect(() => {
@@ -43,10 +62,10 @@ export default function Layout() {
         Saltar al contenido
       </a>
       <div className="anuncios" aria-label="Avisos">
-        <div className="anuncios-pista">
+        <div className="anuncios-pista" style={{ animationDuration: `${avisos.length * 6}s` }}>
           {[0, 1].map((copia) => (
             <span key={copia} aria-hidden={copia === 1}>
-              {ANUNCIOS.map((t) => (
+              {avisos.map((t) => (
                 <span key={t} className="anuncio">
                   {t}
                 </span>
@@ -67,7 +86,7 @@ export default function Layout() {
           </button>
 
           <Link to="/" className="header-logo" aria-label="Talabartería Cartago — inicio">
-            <img src={`${BASE}logo-cartago.png`} alt="Talabartería Cartago" width="300" height="151" />
+            <img src={`${BASE}logo-cartago.png`} alt="Talabartería Cartago" width="197" height="240" />
           </Link>
 
           <form className="header-buscar" role="search" onSubmit={buscar}>
@@ -89,7 +108,7 @@ export default function Layout() {
           </Link>
         </div>
 
-        <MenuPrincipal abierto={menuAbierto} />
+        <MenuPrincipal abierto={menuAbierto} marcas={marcas} />
       </header>
 
       <main id="contenido">
@@ -115,11 +134,13 @@ export default function Layout() {
 
 // Menú principal armado desde el árbol de categorías. En computador cada
 // categoría abre su desplegable al pasar el mouse; en el celular, con la flecha.
-function MenuPrincipal({ abierto }) {
+function MenuPrincipal({ abierto, marcas }) {
   const [desplegado, setDesplegado] = useState(null)
   const { pathname, search } = useLocation()
   // Todas las categorías llevan a /catalogo, así que la activa se decide por ?categoria=.
-  const categoriaActiva = pathname === '/catalogo' ? new URLSearchParams(search).get('categoria') : null
+  const params = new URLSearchParams(search)
+  const categoriaActiva = pathname === '/catalogo' ? params.get('categoria') : null
+  const enMarca = pathname === '/catalogo' && !categoriaActiva && params.has('marca')
   const alternar = (nombre) => setDesplegado((d) => (d === nombre ? null : nombre))
 
   return (
@@ -186,6 +207,31 @@ function MenuPrincipal({ abierto }) {
             </div>
           )
         })}
+        {marcas.length > 0 && (
+          <div className={`menu-item con-sub ${desplegado === 'Marcas' ? 'desplegado' : ''}`}>
+            <span className={`menu-enlace ${enMarca ? 'active' : ''}`}>Marcas</span>
+            <button
+              type="button"
+              className="menu-flecha"
+              aria-label="Ver marcas"
+              aria-expanded={desplegado === 'Marcas'}
+              onClick={() => alternar('Marcas')}
+            >
+              <Icono nombre="flecha-abajo" tamano={14} />
+            </button>
+            <div className="submenu submenu-marcas">
+              <div className="submenu-columna">
+                <span className="submenu-titulo">Tienda multimarca</span>
+                {marcas.map((m) => (
+                  <Link key={m} to={`/catalogo?marca=${encodeURIComponent(m)}`} className="submenu-marca">
+                    <LogoMarca marca={m} className="logo-marca-chica" />
+                    <span>{m}</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
         <div className="menu-item">
           <NavLink to="/hazlo-unico" className="menu-enlace menu-personalizados">
             ★ Personalizados
@@ -226,7 +272,7 @@ function Footer() {
       <div className="costura costura-clara" />
       <div className="contenedor footer-grid">
         <div className="footer-marca">
-          <img src={`${BASE}logo-cartago-blanco.png`} alt="Talabartería Cartago" width="300" height="151" />
+          <img src={`${BASE}logo-cartago-blanco.png`} alt="Talabartería Cartago" width="197" height="240" />
           <p>Talabartería artesanal, artículos ecuestres y marroquinería con más de 30 años de tradición.</p>
         </div>
 

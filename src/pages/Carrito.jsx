@@ -7,6 +7,7 @@ import { useMoneda } from '../context/MonedaContext'
 import { linkWhatsApp } from '../utils/whatsapp'
 import { formatoPrecio } from '../utils/formato'
 import { TOPE_CONTRAENTREGA } from '../config'
+import { rastrear } from '../utils/pixel'
 
 const ENTREGAS = {
   tienda: 'Recoger en la tienda',
@@ -53,7 +54,7 @@ function construirMensaje({ items, total, hayPorCotizar, cliente, codigo, moneda
   const lineas = items.flatMap((it, i) => {
     const valor = precio(it)
     const partes = [
-      `${i + 1}. ${it.nombre}${it.color ? ` — Color: ${it.color}` : ''} — Cant: ${it.cantidad} — ${
+      `${i + 1}. ${it.nombre}${it.color ? ` — Color: ${it.color}` : ''}${it.talla ? ` — Tamaño: ${it.talla}` : ''} — Cant: ${it.cantidad} — ${
         valor > 0 ? formato(valor * it.cantidad) : 'Precio a consultar'
       }`,
     ]
@@ -200,6 +201,7 @@ export default function Carrito() {
         etiquetaPago: pagos[pago],
       })
     )
+    rastrear('InitiateCheckout', { content_ids: items.map((it) => it.productoId), num_items: items.length, value: totalCop, currency: 'COP' })
     window.open(url, '_blank', 'noopener,noreferrer')
     setEnviado({ codigo, url })
   }
@@ -227,6 +229,7 @@ export default function Carrito() {
                   {it.nombre}
                 </Link>
                 {it.color && <p className="carrito-item-detalle">Color: {it.color}</p>}
+                {it.talla && <p className="carrito-item-detalle">Tamaño: {it.talla}</p>}
                 {it.personalizacion && <p className="carrito-item-detalle">Personalización: {it.personalizacion}</p>}
                 <p className="carrito-item-precio">{texto(it)}</p>
               </div>
