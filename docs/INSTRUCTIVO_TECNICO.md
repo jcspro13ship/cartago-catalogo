@@ -65,6 +65,8 @@ navegador. Las fotos se reducen a 2000 px antes de subirlas.
   (m = Monturas, e = Equino, j = Jinete, c = Cuidado del caballo, k = Caninos).
 - **Stock rápido**: en la lista, "Stock" despliega los colores con − y +.
 - **Ajustes**: tasa del dólar, cinta de avisos, videos, preguntas frecuentes, marcas y logos, usuarios y cambio de contraseña.
+- **Cotizaciones**: se crean en el panel o llegan solas desde el carrito de la tienda (estado "Nueva"). El botón "PDF para el cliente" genera el PDF con la imagen de Cartago (en el celular lo comparte directo por WhatsApp; en el computador lo descarga). Los datos del PDF (NIT, validez, condiciones) se editan en Ajustes.
+- **Pedidos**: salen de "Convertir en pedido". Al convertir se descuentan del inventario las unidades de las opciones con control de stock; si el pedido se cancela, vuelven. Estados: Por pagar, Pagado, Despachado, Entregado, Cancelado. Numeración automática COT-AAAA-0001 y PED-AAAA-0001.
 - **Tamaños con precio**: en Editar, cada opción lleva color, tamaño, precio y cantidad. Precio vacío = usa el precio del producto.
 - **Historial**: quién hizo cada cambio (también queda en la pestaña Historial).
 

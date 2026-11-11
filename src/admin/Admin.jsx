@@ -4,12 +4,16 @@ import { cerrarSesion, iniciarSesion, llamar, sesionGuardada } from './api'
 import ProductosAdmin from './ProductosAdmin'
 import Ajustes from './Ajustes'
 import Historial from './Historial'
+import Cotizaciones from './Cotizaciones'
+import Pedidos from './Pedidos'
 import './admin.css'
 
 const BASE = import.meta.env.BASE_URL
 
 const PESTANAS = {
   productos: 'Productos',
+  cotizaciones: 'Cotizaciones',
+  pedidos: 'Pedidos',
   ajustes: 'Ajustes',
   historial: 'Historial',
 }
@@ -84,6 +88,25 @@ function Panel({ sesion, onSalir }) {
   const [pestana, setPestana] = useState('productos')
   const [estado, setEstado] = useState({ cargando: true, error: '', datos: null, usuarios: [], historial: [] })
   const [aviso, setAviso] = useState('')
+  // Cotizaciones y pedidos se leen aparte, la primera vez que se abre una de esas pestañas.
+  const [ventas, setVentas] = useState(null)
+  const [errorVentas, setErrorVentas] = useState('')
+  const usaVentas = pestana === 'cotizaciones' || pestana === 'pedidos'
+
+  const recargarVentas = useCallback(async () => {
+    try {
+      const r = await llamar('ventas')
+      setVentas({ cotizaciones: r.cotizaciones, pedidos: r.pedidos })
+      setErrorVentas('')
+    } catch (err) {
+      if (err.sesionVencida) onSalir()
+      else setErrorVentas(err.message)
+    }
+  }, [onSalir])
+
+  useEffect(() => {
+    if (usaVentas && !ventas) recargarVentas()
+  }, [usaVentas, ventas, recargarVentas])
 
   const recargar = useCallback(async () => {
     try {
@@ -111,14 +134,14 @@ function Panel({ sesion, onSalir }) {
       try {
         const r = await llamar(accion, datos)
         if (mensajeOk) setAviso(mensajeOk)
-        await recargar()
+        await Promise.all([recargar(), ventas || usaVentas ? recargarVentas() : null])
         return r
       } catch (err) {
         if (err.sesionVencida) onSalir()
         throw err
       }
     },
-    [recargar, onSalir]
+    [recargar, recargarVentas, ventas, usaVentas, onSalir]
   )
 
   async function salir() {
@@ -163,6 +186,21 @@ function Panel({ sesion, onSalir }) {
               Reintentar
             </button>
           </div>
+        ) : usaVentas && !ventas ? (
+          errorVentas ? (
+            <div className="admin-error">
+              <p>{errorVentas}</p>
+              <button className="boton boton-secundario" onClick={recargarVentas}>
+                Reintentar
+              </button>
+            </div>
+          ) : (
+            <p className="admin-cargando">Cargando cotizaciones y pedidos…</p>
+          )
+        ) : pestana === 'cotizaciones' ? (
+          <Cotizaciones ventas={ventas} datos={estado.datos} ejecutar={ejecutar} />
+        ) : pestana === 'pedidos' ? (
+          <Pedidos ventas={ventas} datos={estado.datos} ejecutar={ejecutar} />
         ) : pestana === 'productos' ? (
           <ProductosAdmin datos={estado.datos} ejecutar={ejecutar} />
         ) : pestana === 'ajustes' ? (

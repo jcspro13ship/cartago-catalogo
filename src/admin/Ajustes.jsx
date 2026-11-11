@@ -3,6 +3,7 @@ import { formatoPrecio } from '../utils/formato'
 import { PREGUNTAS_FRECUENTES } from '../data/preguntas'
 import { subirVideo, MAX_VIDEO_MB } from './fotos'
 import { AVISOS } from '../config'
+import { CONDICIONES, VALIDEZ_DIAS } from './ventas'
 
 export default function Ajustes({ datos, usuarios, sesion, ejecutar }) {
   return (
@@ -15,6 +16,7 @@ export default function Ajustes({ datos, usuarios, sesion, ejecutar }) {
       </div>
       <div className="admin-editor-grid">
         <Tasa actual={Number(datos.config.tasa_usd) || 0} ejecutar={ejecutar} />
+        <DatosCotizacion config={datos.config} ejecutar={ejecutar} />
         <Avisos config={datos.config} ejecutar={ejecutar} />
         <Videos config={datos.config} ejecutar={ejecutar} />
         <Preguntas config={datos.config} ejecutar={ejecutar} />
@@ -62,6 +64,52 @@ function Tasa({ actual, ejecutar }) {
       {estado.error && <p className="error">{estado.error}</p>}
       <button className="boton boton-primario" disabled={estado.ocupado || !(Number(valor) > 0) || Number(valor) === actual}>
         Guardar tasa
+      </button>
+    </form>
+  )
+}
+
+// Datos que salen en el PDF de cotizaciones y pedidos.
+function DatosCotizacion({ config, ejecutar }) {
+  const [valores, setValores] = useState(() => ({
+    empresa_nit: String(config.empresa_nit || ''),
+    empresa_correo: String(config.empresa_correo || ''),
+    cotizacion_validez: String(config.cotizacion_validez || VALIDEZ_DIAS),
+    cotizacion_condiciones: String(config.cotizacion_condiciones || CONDICIONES),
+  }))
+  const [estado, correr] = useAccion()
+  const cambiar = (campo, v) => setValores((x) => ({ ...x, [campo]: v }))
+  return (
+    <form
+      className="admin-bloque"
+      onSubmit={(e) => {
+        e.preventDefault()
+        correr(() => ejecutar('guardarConfig', { config: { ...valores, cotizacion_validez: Number(valores.cotizacion_validez) || VALIDEZ_DIAS } }, 'Datos de cotización guardados.'))
+      }}
+    >
+      <h2>Cotizaciones en PDF</h2>
+      <p className="admin-sub">Estos datos aparecen en el PDF que se le envía al cliente.</p>
+      <div className="admin-dos">
+        <label className="campo">
+          <span>NIT de la empresa</span>
+          <input value={valores.empresa_nit} onChange={(e) => cambiar('empresa_nit', e.target.value)} placeholder="900.000.000-0" />
+        </label>
+        <label className="campo">
+          <span>Validez (días)</span>
+          <input type="number" min="1" inputMode="numeric" value={valores.cotizacion_validez} onChange={(e) => cambiar('cotizacion_validez', e.target.value)} />
+        </label>
+      </div>
+      <label className="campo">
+        <span>Correo de contacto (opcional)</span>
+        <input type="email" value={valores.empresa_correo} onChange={(e) => cambiar('empresa_correo', e.target.value)} />
+      </label>
+      <label className="campo">
+        <span>Condiciones (una por línea)</span>
+        <textarea className="admin-avisos" rows={6} value={valores.cotizacion_condiciones} onChange={(e) => cambiar('cotizacion_condiciones', e.target.value)} />
+      </label>
+      {estado.error && <p className="error">{estado.error}</p>}
+      <button className="boton boton-primario" disabled={estado.ocupado}>
+        Guardar datos
       </button>
     </form>
   )

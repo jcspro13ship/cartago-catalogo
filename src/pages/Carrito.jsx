@@ -8,6 +8,7 @@ import { linkWhatsApp } from '../utils/whatsapp'
 import { formatoPrecio } from '../utils/formato'
 import { TOPE_CONTRAENTREGA } from '../config'
 import { rastrear } from '../utils/pixel'
+import { registrarPedidoWeb } from '../data/pedidoWeb'
 
 const ENTREGAS = {
   tienda: 'Recoger en la tienda',
@@ -201,6 +202,17 @@ export default function Carrito() {
         etiquetaPago: pagos[pago],
       })
     )
+    registrarPedidoWeb({
+      referencia: codigo,
+      cliente: datos.nombre,
+      telefono: datos.celular,
+      ciudad: datos.entrega === 'internacional' ? `${datos.ciudad}, ${datos.pais}` : datos.ciudad,
+      direccion: datos.entrega !== 'tienda' ? datos.direccion : '',
+      entrega: ENTREGAS[datos.entrega],
+      pago: pagos[pago],
+      notas: datos.notas,
+      items: items.map((it) => ({ sku: it.sku, cantidad: it.cantidad, personalizacion: it.personalizacion || '' })),
+    })
     rastrear('InitiateCheckout', { content_ids: items.map((it) => it.productoId), num_items: items.length, value: totalCop, currency: 'COP' })
     window.open(url, '_blank', 'noopener,noreferrer')
     setEnviado({ codigo, url })

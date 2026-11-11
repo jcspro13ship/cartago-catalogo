@@ -20,6 +20,19 @@ const estado = {
   usuarios: { demo: { nombre: 'Usuario de prueba', clave: 'demo1234' } },
   sesiones: {},
   historial: [],
+  cotizaciones: [],
+  pedidos: [],
+  contadores: {},
+}
+
+function siguiente(prefijo) {
+  const anio = new Date().getFullYear()
+  estado.contadores[prefijo] = (estado.contadores[prefijo] || 0) + 1
+  return `${prefijo}-${anio}-${String(estado.contadores[prefijo]).padStart(4, '0')}`
+}
+
+function totalDe(c) {
+  return Math.max(0, c.items.reduce((a, it) => a + it.precio * it.cantidad, 0) - (c.descuento || 0) + (c.envio || 0))
 }
 
 function registrar(usuario, accion, detalle) {
@@ -30,6 +43,11 @@ const espera = () => new Promise((r) => setTimeout(r, 250))
 
 export async function atenderMock(p) {
   await espera()
+  if (p.accion === 'pedidoWeb') {
+    const ped = p.pedido
+    estado.cotizaciones.push({ ...ped, numero: siguiente('COT'), fecha: new Date().toISOString(), estado: 'Nueva', origen: 'web', descuento: 0, envio: 0, items: ped.items.map((it) => ({ ...it, nombre: it.sku, precio: 0 })), total: 0 })
+    return { ok: true }
+  }
   if (p.accion === 'login') {
     const u = estado.usuarios[String(p.usuario || '').toLowerCase()]
     if (!u || u.clave !== p.clave) return { ok: false, error: 'Usuario o contraseña incorrectos.' }
@@ -94,6 +112,45 @@ export async function atenderMock(p) {
       if (estado.usuarios[usuario].clave !== p.claveActual) return { ok: false, error: 'La contraseña actual no es correcta.' }
       estado.usuarios[usuario].clave = p.claveNueva
       return { ok: true }
+    case 'ventas':
+      return { ok: true, cotizaciones: structuredClone([...estado.cotizaciones].reverse()), pedidos: structuredClone([...estado.pedidos].reverse()) }
+    case 'guardarCotizacion': {
+      const c = p.cotizacion
+      const i = estado.cotizaciones.findIndex((x) => x.numero === c.numero)
+      const base = i >= 0 ? estado.cotizaciones[i] : { numero: siguiente('COT'), fecha: new Date().toISOString(), origen: 'panel', estado: 'Borrador' }
+      const registro = { ...base, ...c, numero: base.numero, fecha: base.fecha, total: totalDe(c) }
+      if (i >= 0) estado.cotizaciones[i] = registro
+      else estado.cotizaciones.push(registro)
+      registrar(usuario, i >= 0 ? 'Editó cotización' : 'Creó cotización', registro.numero)
+      return { ok: true, numero: registro.numero }
+    }
+    case 'estadoCotizacion': {
+      const c = estado.cotizaciones.find((x) => x.numero === p.numero)
+      c.estado = p.estado
+      return { ok: true }
+    }
+    case 'convertirEnPedido': {
+      const c = estado.cotizaciones.find((x) => x.numero === p.numero)
+      const descontado = {}
+      c.items.forEach((it) => {
+        const v = estado.variantes.find((x) => x.sku === it.sku)
+        if (v && v.stock !== null && v.stock !== '' && v.stock !== undefined) {
+          const resta = Math.min(Number(v.stock) || 0, it.cantidad)
+          v.stock = (Number(v.stock) || 0) - resta
+          if (resta) descontado[it.sku] = resta
+        }
+      })
+      const pedido = { ...c, numero: siguiente('PED'), fecha: new Date().toISOString(), estado: 'Por pagar', cotizacion: c.numero, guia: '', stock_descontado: JSON.stringify(descontado) }
+      estado.pedidos.push(pedido)
+      c.estado = 'Convertida'
+      c.pedido = pedido.numero
+      return { ok: true, numero: pedido.numero }
+    }
+    case 'actualizarPedido': {
+      const ped = estado.pedidos.find((x) => x.numero === p.numero)
+      Object.assign(ped, p.cambios)
+      return { ok: true }
+    }
     case 'logout':
       delete estado.sesiones[p.token]
       return { ok: true }

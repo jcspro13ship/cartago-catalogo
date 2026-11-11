@@ -12,7 +12,7 @@
 //
 // Paso a paso de instalación: docs/INSTRUCTIVO_TECNICO.md (en el repositorio del sitio)
 
-var VERSION = 6
+var VERSION = 7
 
 var ESTRUCTURA = {
   Productos: [
@@ -25,6 +25,16 @@ var ESTRUCTURA = {
   Configuracion: ['clave', 'valor', 'descripcion'],
   Listas: ['categoria', 'subcategoria'],
   Historial: ['fecha', 'usuario', 'accion', 'detalle'],
+  Cotizaciones: [
+    'numero', 'fecha', 'estado', 'origen', 'referencia', 'cliente', 'documento', 'telefono', 'correo', 'ciudad',
+    'direccion', 'entrega', 'pago', 'items', 'descuento', 'envio', 'total', 'notas', 'validez_dias', 'pedido',
+    'creado_por', 'actualizado', 'actualizado_por',
+  ],
+  Pedidos: [
+    'numero', 'fecha', 'estado', 'cotizacion', 'cliente', 'documento', 'telefono', 'correo', 'ciudad', 'direccion',
+    'entrega', 'pago', 'items', 'descuento', 'envio', 'total', 'notas', 'guia', 'stock_descontado', 'creado_por',
+    'actualizado', 'actualizado_por',
+  ],
 }
 
 // Categoría → subcategorías finales (la tienda deduce el camino completo,
@@ -184,6 +194,10 @@ function atender_(pedido) {
   var accion = pedido.accion
 
   if (accion === 'login') return iniciarSesion_(pedido.usuario, pedido.clave)
+  // Pedido enviado desde el carrito de la tienda (sin sesión): queda como cotización nueva.
+  if (accion === 'pedidoWeb') return conCandadoVentas_(function () {
+    return registrarPedidoWeb_(pedido.pedido || {})
+  })
 
   var usuario = usuarioDeSesion_(pedido.token)
   if (!usuario) return { ok: false, error: 'Tu sesión venció. Vuelve a iniciar sesión.', sesion: false }
@@ -213,6 +227,24 @@ function atender_(pedido) {
       })
     case 'firmaFoto':
       return firmaCloudinary_()
+    case 'ventas':
+      return { ok: true, cotizaciones: leerVentas_('Cotizaciones'), pedidos: leerVentas_('Pedidos') }
+    case 'guardarCotizacion':
+      return conCandadoVentas_(function () {
+        return guardarCotizacion_(pedido.cotizacion || {}, usuario)
+      })
+    case 'estadoCotizacion':
+      return conCandadoVentas_(function () {
+        return cambiarEstadoCotizacion_(pedido.numero, pedido.estado, usuario)
+      })
+    case 'convertirEnPedido':
+      return conCandado_(function () {
+        return convertirEnPedido_(pedido.numero, usuario)
+      })
+    case 'actualizarPedido':
+      return conCandado_(function () {
+        return actualizarPedido_(pedido.numero, pedido.cambios || {}, usuario)
+      })
     case 'crearUsuario':
       return conCandado_(function () {
         crearUsuario_(pedido.nuevoUsuario, pedido.nombre, pedido.clave)
@@ -700,4 +732,317 @@ function menuConfigurarCloudinary() {
     props.setProperty(pasos[i][0], r.getResponseText().trim())
   }
   ui.alert('Cloudinary configurado. Ya se pueden subir fotos desde el panel.')
+}
+
+// ===================================================================
+// Cotizaciones y pedidos
+// ===================================================================
+// Cada cotización o pedido es una fila; los productos van en la columna
+// "items" como JSON: [{sku, producto_id, nombre, color, talla, personalizacion,
+// cantidad, precio, imagen}]. Un ítem sin sku es una pieza libre (p. ej. un
+// trabajo a la medida que no está en el catálogo).
+
+var ESTADOS_COTIZACION = ['Nueva', 'Borrador', 'Enviada', 'Convertida', 'Anulada']
+var ESTADOS_PEDIDO = ['Por pagar', 'Pagado', 'Despachado', 'Entregado', 'Cancelado']
+var MAX_PEDIDOS_WEB_HORA = 60
+
+// Igual que conCandado_, pero sin borrar el caché del catálogo público.
+function conCandadoVentas_(fn) {
+  var candado = LockService.getScriptLock()
+  candado.waitLock(20000)
+  try {
+    return fn()
+  } finally {
+    candado.releaseLock()
+  }
+}
+
+// Crea la pestaña con sus encabezados la primera vez que se usa.
+function asegurarHoja_(nombre) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet()
+  if (ss.getSheetByName(nombre)) return
+  var hoja = ss.insertSheet(nombre)
+  var columnas = ESTRUCTURA[nombre]
+  hoja.getRange(1, 1, 1, columnas.length).setValues([columnas]).setFontWeight('bold').setFontColor('#ffffff').setBackground('#771541')
+  hoja.setFrozenRows(1)
+  hoja.getRange(2, 1, hoja.getMaxRows() - 1, 1).setNumberFormat('@')
+}
+
+// COT-2026-0001, PED-2026-0001… El contador vive en las propiedades del script.
+function siguienteNumero_(prefijo) {
+  var anio = new Date().getFullYear()
+  var props = PropertiesService.getScriptProperties()
+  var clave = 'contador_' + prefijo + '_' + anio
+  var n = Number(props.getProperty(clave) || 0) + 1
+  props.setProperty(clave, String(n))
+  return prefijo + '-' + anio + '-' + ('000' + n).slice(-4)
+}
+
+function texto_(valor, maximo) {
+  return String(valor == null ? '' : valor).trim().slice(0, maximo || 200)
+}
+
+function numero_(valor) {
+  var n = Number(valor)
+  return isFinite(n) && n > 0 ? Math.round(n) : 0
+}
+
+function limpiarItems_(items) {
+  if (!Array.isArray(items)) return []
+  return items.slice(0, 80).map(function (it) {
+    return {
+      sku: texto_(it.sku, 60),
+      producto_id: texto_(it.producto_id, 60),
+      nombre: texto_(it.nombre, 160),
+      color: texto_(it.color, 60),
+      talla: texto_(it.talla, 60),
+      personalizacion: texto_(it.personalizacion, 300),
+      cantidad: Math.max(1, Math.min(9999, Math.floor(Number(it.cantidad) || 1))),
+      precio: numero_(it.precio),
+      imagen: texto_(it.imagen, 400),
+    }
+  }).filter(function (it) {
+    return it.nombre
+  })
+}
+
+function totalDe_(items, descuento, envio) {
+  var suma = items.reduce(function (acc, it) {
+    return acc + it.precio * it.cantidad
+  }, 0)
+  return Math.max(0, suma - numero_(descuento) + numero_(envio))
+}
+
+function leerVentas_(nombre) {
+  asegurarHoja_(nombre)
+  return leerTabla_(nombre)
+    .filas.map(function (f) {
+      var r = {}
+      ESTRUCTURA[nombre].forEach(function (c) {
+        var v = f[c]
+        r[c] = v instanceof Date ? v.toISOString() : v === undefined ? '' : v
+      })
+      try {
+        r.items = JSON.parse(f.items || '[]')
+      } catch (err) {
+        r.items = []
+      }
+      r.numero = String(r.numero)
+      return r
+    })
+    .reverse() // lo más reciente primero
+}
+
+function buscarFila_(nombre, numero) {
+  var tabla = leerTabla_(nombre)
+  var fila = tabla.filas.filter(function (f) {
+    return String(f.numero) === String(numero)
+  })[0]
+  return { tabla: tabla, fila: fila }
+}
+
+function datosCliente_(c) {
+  return {
+    cliente: texto_(c.cliente, 120),
+    documento: texto_(c.documento, 40),
+    telefono: texto_(c.telefono, 40),
+    correo: texto_(c.correo, 120),
+    ciudad: texto_(c.ciudad, 80),
+    direccion: texto_(c.direccion, 200),
+    entrega: texto_(c.entrega, 60),
+    pago: texto_(c.pago, 80),
+  }
+}
+
+function guardarCotizacion_(c, usuario) {
+  asegurarHoja_('Cotizaciones')
+  var items = limpiarItems_(c.items)
+  if (!texto_(c.cliente)) throw new Error('Escribe el nombre del cliente.')
+  if (!items.length) throw new Error('Agrega al menos un producto.')
+  var existente = c.numero ? buscarFila_('Cotizaciones', c.numero) : null
+  if (existente && existente.fila && (existente.fila.estado === 'Convertida' || existente.fila.estado === 'Anulada')) {
+    throw new Error('Esta cotización ya está ' + String(existente.fila.estado).toLowerCase() + ' y no se puede editar.')
+  }
+  var base = existente && existente.fila ? existente.fila : null
+  var registro = datosCliente_(c)
+  registro.numero = base ? String(base.numero) : siguienteNumero_('COT')
+  registro.fecha = base ? base.fecha : new Date()
+  registro.estado = ESTADOS_COTIZACION.indexOf(c.estado) !== -1 ? c.estado : base ? base.estado : 'Borrador'
+  registro.origen = base ? base.origen : 'panel'
+  registro.referencia = base ? base.referencia : ''
+  registro.items = JSON.stringify(items)
+  registro.descuento = numero_(c.descuento)
+  registro.envio = numero_(c.envio)
+  registro.total = totalDe_(items, c.descuento, c.envio)
+  registro.notas = texto_(c.notas, 1000)
+  registro.validez_dias = numero_(c.validez_dias) || ''
+  registro.pedido = base ? base.pedido : ''
+  registro.creado_por = base ? base.creado_por : usuario
+  registro.actualizado = new Date()
+  registro.actualizado_por = usuario
+  var tabla = leerTabla_('Cotizaciones')
+  escribirFila_(tabla, base ? base._fila : null, registro)
+  registrar_(usuario, base ? 'Editó cotización' : 'Creó cotización', registro.numero + ' · ' + registro.cliente)
+  return { ok: true, numero: registro.numero }
+}
+
+function cambiarEstadoCotizacion_(numero, estado, usuario) {
+  if (['Nueva', 'Borrador', 'Enviada', 'Anulada'].indexOf(estado) === -1) throw new Error('Estado no válido.')
+  var r = buscarFila_('Cotizaciones', numero)
+  if (!r.fila) throw new Error('No existe la cotización ' + numero + '.')
+  if (r.fila.estado === 'Convertida') throw new Error('La cotización ya es un pedido.')
+  var col = r.tabla.encabezados.indexOf('estado') + 1
+  r.tabla.hoja.getRange(r.fila._fila, col).setValue(estado)
+  registrar_(usuario, 'Cotización ' + String(estado).toLowerCase(), numero)
+  return { ok: true }
+}
+
+// Pasa la cotización a pedido y descuenta las unidades de los colores o
+// tamaños que llevan control de inventario (stock con número).
+function convertirEnPedido_(numero, usuario) {
+  asegurarHoja_('Pedidos')
+  var r = buscarFila_('Cotizaciones', numero)
+  if (!r.fila) throw new Error('No existe la cotización ' + numero + '.')
+  if (r.fila.estado === 'Convertida') throw new Error('Esta cotización ya se convirtió en el pedido ' + r.fila.pedido + '.')
+  if (r.fila.estado === 'Anulada') throw new Error('La cotización está anulada.')
+  var items = JSON.parse(r.fila.items || '[]')
+
+  var variantes = leerTabla_('Variantes')
+  var colStock = variantes.encabezados.indexOf('stock') + 1
+  var descontado = {}
+  items.forEach(function (it) {
+    if (!it.sku) return
+    var v = variantes.filas.filter(function (f) {
+      return String(f.sku) === String(it.sku)
+    })[0]
+    if (!v || v.stock === '' || v.stock === null) return
+    var actual = Number(v.stock) || 0
+    var resta = Math.min(actual, it.cantidad)
+    v.stock = actual - resta
+    variantes.hoja.getRange(v._fila, colStock).setValue(v.stock)
+    if (resta > 0) descontado[it.sku] = (descontado[it.sku] || 0) + resta
+  })
+
+  var pedido = {}
+  ESTRUCTURA.Pedidos.forEach(function (c) {
+    if (r.fila.hasOwnProperty(c)) pedido[c] = r.fila[c]
+  })
+  pedido.numero = siguienteNumero_('PED')
+  pedido.fecha = new Date()
+  pedido.estado = 'Por pagar'
+  pedido.cotizacion = String(numero)
+  pedido.guia = ''
+  pedido.stock_descontado = JSON.stringify(descontado)
+  pedido.creado_por = usuario
+  pedido.actualizado = new Date()
+  pedido.actualizado_por = usuario
+  escribirFila_(leerTabla_('Pedidos'), null, pedido)
+
+  var cols = r.tabla.encabezados
+  r.tabla.hoja.getRange(r.fila._fila, cols.indexOf('estado') + 1).setValue('Convertida')
+  r.tabla.hoja.getRange(r.fila._fila, cols.indexOf('pedido') + 1).setValue(pedido.numero)
+  registrar_(usuario, 'Convirtió en pedido', numero + ' → ' + pedido.numero)
+  return { ok: true, numero: pedido.numero }
+}
+
+// Estado, guía de envío, notas y forma de pago del pedido. Al cancelarlo se
+// devuelven al inventario las unidades que se habían descontado.
+function actualizarPedido_(numero, cambios, usuario) {
+  var r = buscarFila_('Pedidos', numero)
+  if (!r.fila) throw new Error('No existe el pedido ' + numero + '.')
+  var fila = r.fila
+  if (fila.estado === 'Cancelado') throw new Error('El pedido está cancelado y no se puede modificar.')
+  var nuevoEstado = cambios.estado && ESTADOS_PEDIDO.indexOf(cambios.estado) !== -1 ? cambios.estado : fila.estado
+
+  if (nuevoEstado === 'Cancelado') {
+    var descontado = {}
+    try {
+      descontado = JSON.parse(fila.stock_descontado || '{}')
+    } catch (err) {
+      descontado = {}
+    }
+    var variantes = leerTabla_('Variantes')
+    var colStock = variantes.encabezados.indexOf('stock') + 1
+    Object.keys(descontado).forEach(function (sku) {
+      var v = variantes.filas.filter(function (f) {
+        return String(f.sku) === sku
+      })[0]
+      if (v && v.stock !== '' && v.stock !== null) variantes.hoja.getRange(v._fila, colStock).setValue((Number(v.stock) || 0) + descontado[sku])
+    })
+    fila.stock_descontado = '{}'
+  }
+
+  fila.estado = nuevoEstado
+  if (cambios.hasOwnProperty('guia')) fila.guia = texto_(cambios.guia, 120)
+  if (cambios.hasOwnProperty('notas')) fila.notas = texto_(cambios.notas, 1000)
+  if (cambios.hasOwnProperty('pago')) fila.pago = texto_(cambios.pago, 80)
+  fila.actualizado = new Date()
+  fila.actualizado_por = usuario
+  escribirFila_(r.tabla, fila._fila, fila)
+  registrar_(usuario, 'Actualizó pedido', numero + ' · ' + nuevoEstado)
+  return { ok: true }
+}
+
+// Pedido que el cliente armó en la tienda y envió por WhatsApp. Los precios y
+// nombres se toman del catálogo, no de lo que mande el navegador. Hay un tope
+// por hora para que nadie llene la hoja con envíos falsos.
+function registrarPedidoWeb_(p) {
+  asegurarHoja_('Cotizaciones')
+  var cache = CacheService.getScriptCache()
+  var referencia = texto_(p.referencia, 30)
+  if (!referencia) throw new Error('Falta el código del pedido.')
+  if (cache.get('pedido_web_' + referencia)) return { ok: true, repetido: true }
+  var claveHora = 'pedidos_web_' + Utilities.formatDate(new Date(), 'GMT', 'yyyyMMddHH')
+  var enLaHora = Number(cache.get(claveHora) || 0)
+  if (enLaHora >= MAX_PEDIDOS_WEB_HORA) throw new Error('Demasiados pedidos en poco tiempo.')
+
+  var catalogo = leerCatalogo_()
+  var porId = {}
+  catalogo.productos.forEach(function (prod) {
+    porId[prod.id] = prod
+  })
+  var porSku = {}
+  catalogo.variantes.forEach(function (v) {
+    porSku[v.sku] = v
+  })
+  var items = (Array.isArray(p.items) ? p.items : []).slice(0, 60).map(function (it) {
+    var v = porSku[String(it.sku)]
+    var prod = v && porId[v.producto_id]
+    if (!prod) return null
+    return {
+      sku: v.sku,
+      producto_id: prod.id,
+      nombre: prod.nombre,
+      color: v.color,
+      talla: v.talla,
+      personalizacion: texto_(it.personalizacion, 300),
+      cantidad: Math.max(1, Math.min(999, Math.floor(Number(it.cantidad) || 1))),
+      precio: v.precio > 0 ? v.precio : prod.precio,
+      imagen: prod.imagenes[0] || '',
+    }
+  }).filter(Boolean)
+  if (!items.length) throw new Error('El pedido no tiene productos válidos.')
+
+  var registro = datosCliente_(p)
+  if (!registro.cliente) throw new Error('Falta el nombre del cliente.')
+  registro.numero = siguienteNumero_('COT')
+  registro.fecha = new Date()
+  registro.estado = 'Nueva'
+  registro.origen = 'web'
+  registro.referencia = referencia
+  registro.items = JSON.stringify(items)
+  registro.descuento = 0
+  registro.envio = 0
+  registro.total = totalDe_(items, 0, 0)
+  registro.notas = texto_(p.notas, 1000)
+  registro.validez_dias = ''
+  registro.pedido = ''
+  registro.creado_por = 'tienda'
+  registro.actualizado = new Date()
+  registro.actualizado_por = 'tienda'
+  escribirFila_(leerTabla_('Cotizaciones'), null, registro)
+  cache.put('pedido_web_' + referencia, '1', 6 * 60 * 60)
+  cache.put(claveHora, String(enLaHora + 1), 60 * 60)
+  registrar_('tienda', 'Pedido web', registro.numero + ' · ' + referencia + ' · ' + registro.cliente)
+  return { ok: true, numero: registro.numero }
 }
