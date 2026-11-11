@@ -12,7 +12,7 @@
 //
 // Paso a paso de instalación: docs/INSTRUCTIVO_TECNICO.md (en el repositorio del sitio)
 
-var VERSION = 7
+var VERSION = 8
 
 var ESTRUCTURA = {
   Productos: [
@@ -768,14 +768,19 @@ function asegurarHoja_(nombre) {
   hoja.getRange(2, 1, hoja.getMaxRows() - 1, 1).setNumberFormat('@')
 }
 
-// COT-2026-0001, PED-2026-0001… El contador vive en las propiedades del script.
+// COT-2026-0001, PED-2026-0001… El siguiente número sale de los que ya están
+// en la hoja (el mayor del año + 1); si se borran filas de prueba, la
+// numeración se ajusta sola. Siempre se llama dentro del candado.
 function siguienteNumero_(prefijo) {
   var anio = new Date().getFullYear()
-  var props = PropertiesService.getScriptProperties()
-  var clave = 'contador_' + prefijo + '_' + anio
-  var n = Number(props.getProperty(clave) || 0) + 1
-  props.setProperty(clave, String(n))
-  return prefijo + '-' + anio + '-' + ('000' + n).slice(-4)
+  var nombre = prefijo === 'PED' ? 'Pedidos' : 'Cotizaciones'
+  var inicio = prefijo + '-' + anio + '-'
+  var mayor = 0
+  leerTabla_(nombre).filas.forEach(function (f) {
+    var numero = String(f.numero || '')
+    if (numero.indexOf(inicio) === 0) mayor = Math.max(mayor, Number(numero.slice(inicio.length)) || 0)
+  })
+  return inicio + ('000' + (mayor + 1)).slice(-4)
 }
 
 function texto_(valor, maximo) {
