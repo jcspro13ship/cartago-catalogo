@@ -109,6 +109,7 @@ export const LOGOS_MARCAS = {
   Mesacé: `${BASE}marcas/mesace.png`,
   'Al Torno': `${BASE}marcas/al-torno.png`,
   Sybeq: `${BASE}marcas/sybeq.png`,
+  Cheval: `${BASE}marcas/cheval.png`,
 }
 
 // Logos tipo insignia (con fondo y varios colores): en la cinta oscura se
