@@ -53,7 +53,7 @@ var CATEGORIAS = {
   'Cuidado del caballo': ['Aseo', 'Suplementos', 'Accesorios'],
   Caninos: ['Bozales', 'Collares', 'Pecheras', 'Traíllas', 'Brazaletes'],
 }
-var MARCAS = ['Cartago', 'San Fermín', 'Mesacé', 'Al Torno', 'Sybec', 'Natural V.', 'Cheval']
+var MARCAS = ['Cartago', 'San Fermín', 'Mesacé', 'Al Torno', 'Sybeq', 'Natural V.', 'Cheval']
 
 var CACHE_CATALOGO = 'catalogo_json_v4'
 var CACHE_SEGUNDOS = 300 // el catálogo público se relee del Sheet como mucho cada 5 min

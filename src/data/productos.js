@@ -61,7 +61,7 @@ export const productos = [
     'El clásico carriel en cuero con sus compartimentos tradicionales.', 260000),
   p('j4', 'Llavero miniatura', 'Accesorios', 'Bisutería', 'Cheval',
     'Llavero con miniatura ecuestre en metal.', 35000),
-  p('c1', 'Kit de aseo', 'Cuidado del caballo', '', 'Sybec',
+  p('c1', 'Kit de aseo', 'Cuidado del caballo', '', 'Sybeq',
     'Kit con los productos básicos para el baño y cuidado del pelaje.', 120000),
   p('c2', 'Pijama para caballo', 'Cuidado del caballo', '', 'Cartago',
     'Pijama en tela suave para el descanso en pesebrera. Con más de un bordado, el precio se consulta.',

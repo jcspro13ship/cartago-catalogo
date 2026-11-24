@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-do
 import { useCart } from '../context/CartContext'
 import { useMoneda } from '../context/MonedaContext'
 import { useCatalogo } from '../context/CatalogoContext'
-import { AVISOS, CATEGORIAS, EMPRESA, TRANSPORTADORAS } from '../config'
+import { AVISOS, CATEGORIAS, EMPRESA, LOGOS_A_COLOR, TRANSPORTADORAS } from '../config'
 import { iniciarPixel, rastrear } from '../utils/pixel'
 import LogoMarca from './LogoMarca'
 import { linkACamino } from '../utils/categorias'
@@ -66,7 +66,7 @@ export default function Layout() {
           {[0, 1].map((copia) => (
             <span key={copia} aria-hidden={copia === 1}>
               {avisos.map((t) => (
-                <span key={t} className={`anuncio ${marcas.includes(t) ? 'anuncio-marca' : ''}`}>
+                <span key={t} className={`anuncio ${marcas.includes(t) ? 'anuncio-marca' : ''} ${LOGOS_A_COLOR.includes(t) ? 'a-color' : ''}`}>
                   {marcas.includes(t) ? <LogoMarca marca={t} /> : t}
                 </span>
               ))}

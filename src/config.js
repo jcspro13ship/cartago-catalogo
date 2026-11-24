@@ -107,10 +107,16 @@ export const LOGOS_MARCAS = {
   Cartago: `${BASE}marcas/cartago.png`,
   'San Fermín': `${BASE}marcas/san-fermin.png`,
   Mesacé: `${BASE}marcas/mesace.png`,
+  'Al Torno': `${BASE}marcas/al-torno.png`,
+  Sybeq: `${BASE}marcas/sybeq.png`,
 }
 
+// Logos tipo insignia (con fondo y varios colores): en la cinta oscura se
+// muestran tal cual; los demás, de un solo color, se pasan a blanco.
+export const LOGOS_A_COLOR = ['Al Torno', 'Sybeq']
+
 // Orden en que aparecen las marcas en la página de inicio.
-export const MARCAS = ['Cartago', 'San Fermín', 'Mesacé', 'Al Torno', 'Sybec', 'Natural V.', 'Cheval']
+export const MARCAS = ['Cartago', 'San Fermín', 'Mesacé', 'Al Torno', 'Sybeq', 'Natural V.', 'Cheval']
 
 export const TRANSPORTADORAS = [
   { nombre: 'Servientrega', logo: `${BASE}envios/servientrega.png` },

@@ -3036,3 +3036,9 @@ img.galeria-principal {
   color: var(--cafe);
   text-decoration: underline;
 }
+
+.anuncio-marca.a-color .logo-marca img {
+  height: 22px;
+  filter: none;
+  opacity: 1;
+}

@@ -12,7 +12,7 @@ const estado = {
     { marca: 'San Fermín', logo: '' },
     { marca: 'Mesacé', logo: '' },
     { marca: 'Al Torno', logo: '' },
-    { marca: 'Sybec', logo: '' },
+    { marca: 'Sybeq', logo: '' },
     { marca: 'Natural V.', logo: '' },
     { marca: 'Cheval', logo: '' },
   ],
