@@ -66,8 +66,8 @@ export default function Layout() {
           {[0, 1].map((copia) => (
             <span key={copia} aria-hidden={copia === 1}>
               {avisos.map((t) => (
-                <span key={t} className="anuncio">
-                  {t}
+                <span key={t} className={`anuncio ${marcas.includes(t) ? 'anuncio-marca' : ''}`}>
+                  {marcas.includes(t) ? <LogoMarca marca={t} /> : t}
                 </span>
               ))}
             </span>
@@ -86,7 +86,7 @@ export default function Layout() {
           </button>
 
           <Link to="/" className="header-logo" aria-label="Talabartería Cartago — inicio">
-            <img src={`${BASE}logo-cartago.png`} alt="Talabartería Cartago" width="197" height="240" />
+            <img src={`${BASE}logo-cartago-completo.png`} alt="Talabartería Cartago" width="417" height="220" />
           </Link>
 
           <form className="header-buscar" role="search" onSubmit={buscar}>
@@ -272,7 +272,7 @@ function Footer() {
       <div className="costura costura-clara" />
       <div className="contenedor footer-grid">
         <div className="footer-marca">
-          <img src={`${BASE}logo-cartago-blanco.png`} alt="Talabartería Cartago" width="197" height="240" />
+          <img src={`${BASE}logo-cartago-completo-blanco.png`} alt="Talabartería Cartago" width="417" height="220" />
           <p>Talabartería artesanal, artículos ecuestres y marroquinería con más de 30 años de tradición.</p>
         </div>
 

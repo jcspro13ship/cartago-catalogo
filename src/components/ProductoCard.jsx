@@ -2,11 +2,13 @@ import { Link } from 'react-router-dom'
 import ImagenProducto from './ImagenProducto'
 import LogoMarca from './LogoMarca'
 import { useMoneda } from '../context/MonedaContext'
+import Compartir from './Compartir'
 
 export default function ProductoCard({ producto, stock }) {
   const { precio, texto } = useMoneda()
   const agotado = stock === 0
   return (
+    <div className="producto-card-caja">
     <Link to={`/producto/${producto.id}`} className="producto-card">
       <div className="producto-card-media">
         <ImagenProducto producto={producto} className="producto-card-imagen" />
@@ -28,5 +30,7 @@ export default function ProductoCard({ producto, stock }) {
         </p>
       </div>
     </Link>
+      <Compartir titulo={producto.nombre} ruta={`/producto/${producto.id}`} etiqueta="Compartir producto" compacto className="producto-card-compartir" />
+    </div>
   )
 }

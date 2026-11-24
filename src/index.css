@@ -39,7 +39,7 @@
   --sombra: 0 1px 2px rgba(33, 35, 34, 0.05), 0 8px 24px rgba(33, 35, 34, 0.07);
   --sombra-alta: 0 2px 4px rgba(33, 35, 34, 0.06), 0 18px 40px rgba(33, 35, 34, 0.14);
   --ancho: 1240px;
-  --alto-header: 72px;
+  --alto-header: 86px;
 }
 
 *,
@@ -296,7 +296,7 @@ p {
 }
 
 .header-logo img {
-  height: 66px;
+  height: 70px;
   width: auto;
 }
 
@@ -357,7 +357,7 @@ p {
   }
 
   .header-logo img {
-    height: 50px;
+    height: 48px;
   }
 
 }
@@ -1056,7 +1056,9 @@ p {
 .producto-card-imagen {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  /* Completa, sin recortes: las fotos verticales quedan con borde blanco. */
+  object-fit: contain;
+  background: var(--blanco);
   transition: transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
@@ -1480,7 +1482,7 @@ p {
 .galeria-principal {
   width: 100%;
   aspect-ratio: 1 / 1;
-  object-fit: cover;
+  object-fit: contain;
   border-radius: var(--radio);
   box-shadow: var(--sombra);
 }
@@ -1516,7 +1518,8 @@ img.galeria-principal {
 .galeria-miniatura img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  background: var(--blanco);
 }
 
 .galeria-miniatura.activa,
@@ -2201,7 +2204,7 @@ img.galeria-principal {
 }
 
 .footer-marca img {
-  height: 96px;
+  height: 104px;
   width: auto;
   margin-bottom: 1rem;
 }
@@ -2932,4 +2935,104 @@ img.galeria-principal {
 .compartir-menu a:hover,
 .compartir-menu button:hover {
   background: var(--gris);
+}
+
+/* ---------- Marcas: logo en su página y en la cinta ---------- */
+
+.logo-marca-titulo img {
+  height: 56px;
+  max-width: 200px;
+  margin-bottom: 0.75rem;
+}
+
+.logo-marca-titulo > span {
+  display: none;
+}
+
+.anuncio-marca .logo-marca img {
+  height: 16px;
+  max-width: 90px;
+  /* Logos oscuros sobre la cinta carbón: se muestran en blanco. */
+  filter: brightness(0) invert(1);
+  opacity: 0.92;
+}
+
+.anuncio-marca {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* ---------- Compartir desde la tarjeta del catálogo ---------- */
+
+.producto-card-caja {
+  position: relative;
+  display: flex;
+}
+
+.producto-card-caja > .producto-card {
+  flex: 1;
+  min-width: 0;
+}
+
+.producto-card-compartir {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  z-index: 3;
+}
+
+.compartir-icono {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--tinta);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+.compartir-icono:hover {
+  background: var(--blanco);
+  color: var(--cafe);
+}
+
+.compartir-compacto .compartir-menu {
+  left: auto;
+  right: 0;
+}
+
+.anuncio-marca .logo-marca span {
+  font-size: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+}
+
+/* Ruta del catálogo: los pasos intermedios son botones con aspecto de enlace. */
+.catalogo-migas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.catalogo-migas > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.catalogo-migas button {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.catalogo-migas button:hover {
+  color: var(--cafe);
+  text-decoration: underline;
 }

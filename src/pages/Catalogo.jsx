@@ -8,6 +8,7 @@ import { linkWhatsApp } from '../utils/whatsapp'
 import { ordenarCategorias, ordenarHijos, nodoEn, rutaDeProducto, estaEnRuta } from '../utils/categorias'
 import { Link } from 'react-router-dom'
 import Compartir from '../components/Compartir'
+import LogoMarca from '../components/LogoMarca'
 
 const TAMANO_PAGINA = 24
 const TODAS = 'Todas'
@@ -173,6 +174,7 @@ export default function Catalogo() {
               </span>
             ))}
           </nav>
+          {marca !== TODAS && <LogoMarca marca={marca} className="logo-marca-titulo" />}
           <h1>
             {soloPersonalizables
               ? 'Productos personalizados'

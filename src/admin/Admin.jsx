@@ -57,7 +57,7 @@ function Login({ onIngreso }) {
   return (
     <div className="admin-login">
       <form className="admin-login-tarjeta" onSubmit={entrar}>
-        <img src={`${BASE}logo-cartago.png`} alt="Talabartería Cartago" className="admin-login-logo" />
+        <img src={`${BASE}logo-cartago-completo.png`} alt="Talabartería Cartago" className="admin-login-logo" />
         <h1>Panel de administración</h1>
         <p>Ingresa con tu usuario para manejar el catálogo.</p>
         <label className="campo">
