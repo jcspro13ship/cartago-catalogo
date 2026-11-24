@@ -9,7 +9,7 @@
       // Este truco redirige cualquier ruta desconocida a index.html
       // codificando la ruta original en la URL, y un script en index.html la
       // restaura. Ver: https://github.com/rafgraph/spa-github-pages
-      var pathSegmentsToKeep = 1 // 1 = repo en subcarpeta (github.io/repo/...). Si en el futuro se sirve desde un dominio propio (raíz), cambiar a 0.
+      var pathSegmentsToKeep = 0 // 0 = dominio propio en la raíz. Si vuelve a github.io/repo/, cambiar a 1.
       var l = window.location
       var path = l.pathname.split('/').slice(0, 1 + pathSegmentsToKeep).join('/')
       l.replace(
